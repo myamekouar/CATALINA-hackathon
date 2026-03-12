@@ -1,0 +1,24 @@
+# Large data files
+*.parquet
+*.jsonl.gz
+*.gz
+MERGE_NO_EMPTY.csv
+shopper_master_model.csv
+shopper_segments.csv
+basket_scores.csv
+Categorized_Products_Result.csv
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Claude session files
+.claude/
