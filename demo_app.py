@@ -4,6 +4,7 @@
 # Run: streamlit run demo_app.py
 # ─────────────────────────────────────────────────────────────────────────────
 
+import os
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -18,382 +19,213 @@ st.set_page_config(
 )
 
 # ── Colour palette ────────────────────────────────────────────────────────────
-C_BLUE  = "#004A97"
-C_RED   = "#CC0000"
-C_GREEN = "#2E7D32"
-C_AMBER = "#F57F17"
-C_LTBL  = "#E8F1FB"
+C_BLUE   = "#004A97"
+C_RED    = "#CC0000"
+C_GREEN  = "#2E7D32"
+C_AMBER  = "#F57F17"
+C_LTBL   = "#E8F1FB"
 
-# ── Lookup tables ─────────────────────────────────────────────────────────────
-TIER_COL = {"Bronze": "#B87333", "Silver": "#757575",
-            "Gold": "#F9A825", "Platinum": "#455A64"}
-SEG_ICON = {"Premium Loyal": "💎", "Regular Engaged": "⭐", "Occasional": "🌱"}
-CH_ICON  = {
-    "App Push Notification": "📱", "Email Campaign": "📧",
-    "In-Store Coupon": "🏪",       "E-commerce Banner": "🛒",
-    "Weekend Email": "📧",          "In-Store Flyer": "📄",
-    "Email + App Push": "📱📧",     "App Challenge": "🏆",
+TIER_COL = {
+    "Bronze": "#CD7F32", "Silver": "#757575",
+    "Gold": "#F9A825",   "Platinum": "#546E7A",
 }
-BADGE_COL = {"A": "#038141", "B": "#85BB2F", "C": "#FFCC00",
-             "D": "#EE8100", "E": "#E63312"}
+PERSONA_COL = {
+    "Health Pioneer":    ("#E8F5E9", "#2E7D32"),
+    "Eco Explorer":      ("#E0F2F1", "#00695C"),
+    "Family Organiser":  ("#E3F2FD", "#1565C0"),
+    "Budget-Conscious":  ("#FFF8E1", "#E65100"),
+    "Routine Loyalist":  ("#F3E5F5", "#6A1B9A"),
+    "Weekend Foodie":    ("#FFF3E0", "#BF360C"),
+    "Eco-Progressive":   ("#E8F5E9", "#2E7D32"),
+    "Convenience Seeker":("#E8EAF6", "#283593"),
+}
+NUTRI_ECO_COL = {
+    "A": "#038141", "B": "#85BB2F", "C": "#FFCC00",
+    "D": "#EE8100", "E": "#E63312",
+}
 BADGE_ICON = {
-    "Green Champion": "🌿", "Planet Saver": "🌍", "Loyal Explorer": "⭐",
-    "Family Hero": "👨‍👩‍👧", "First Steps": "🌱", "Sporty Shopper": "🏃",
-    "E-shopper": "📱", "Bulk Buyer": "📦", "Foodie Explorer": "🍴",
+    "Family Hero": "👨‍👩‍👧", "Loyal Explorer": "⭐", "Bulk Buyer": "📦",
+    "First Steps": "🌱",   "Green Champion": "🌿", "Health Habit": "🥗",
+    "Planet Saver": "🌍",  "Eco Leader": "♻️",    "E-shopper": "📱",
+    "Foodie Explorer": "🍴","Weekend Warrior": "🏃","Green Explorer": "🔍",
+}
+CH_ICON = {
+    "App Push Notification": "📱", "Email Campaign": "📧",
+    "In-Store Coupon": "🏪",       "Email and App Push": "📱📧",
+    "App Push": "📱",
 }
 
-PERSONA_META = {
-    "Health Pioneer": {
-        "icon": "🥦",
-        "desc": "Actively gravitating toward healthier products. Strong preference for fresh, organic, and minimally-processed foods across multiple weekly visits.",
-        "motivation": "Personal wellbeing and family health outcomes.",
-        "opportunity": "Double-points missions on fresh & organic categories drive strong engagement and basket upgrading.",
-    },
-    "Eco Explorer": {
-        "icon": "🌍",
-        "desc": "Sustainability-driven shopper with a rising share of eco-certified and plant-based products. High e-commerce usage.",
-        "motivation": "Minimising environmental footprint and ethical consumption.",
-        "opportunity": "Eco Challenge campaigns and carbon-neutral swap missions resonate strongly with this profile.",
-    },
-    "Family Organiser": {
-        "icon": "👨‍👩‍👧",
-        "desc": "High-spend shopper focused on value and convenience for a busy household. Large baskets, weekend-concentrated visits.",
-        "motivation": "Feeding the family efficiently without sacrificing quality.",
-        "opportunity": "Family bundle promos and bulk-buy rewards deliver strong basket size uplift.",
-    },
-    "Smart Saver": {
-        "icon": "💰",
-        "desc": "Price-sensitive shopper who responds strongly to promotional mechanics. In-store only, low frequency.",
-        "motivation": "Maximising value on a tight budget.",
-        "opportunity": "Simple in-store price promotions and bundle offers are the most effective activation lever.",
-    },
-    "Routine Loyalist": {
-        "icon": "🔁",
-        "desc": "Habitual shopper with predictable but infrequent visits. Low offer engagement but shows upgrade potential.",
-        "motivation": "Continuity, familiarity, and convenience.",
-        "opportunity": "Loyalty bonus emails and reactivation campaigns can unlock latent frequency uplift.",
-    },
-    "Weekend Foodie": {
-        "icon": "🍷",
-        "desc": "Concentrated shopper — high basket value concentrated on weekends. Premium fresh and gourmet categories.",
-        "motivation": "Quality, experience, and food discovery.",
-        "opportunity": "Exclusive weekend deals on premium categories drive premium basket trade-up.",
-    },
-    "Budget-Conscious": {
-        "icon": "🧾",
-        "desc": "Early-stage shopper in discovery phase. Low spend, curious about products, strong growth potential.",
-        "motivation": "Exploring options without overspending.",
-        "opportunity": "Gamified product discovery challenges drive trial and habit formation.",
-    },
-    "Eco-Progressive": {
-        "icon": "♻️",
-        "desc": "Mid-journey sustainability shopper progressively upgrading to greener choices. High digital engagement.",
-        "motivation": "Making progressively better environmental choices.",
-        "opportunity": "Seasonal challenges and eco-progress tracking accelerate the transition to greener baskets.",
-    },
-}
-
-CATEGORY_PROFILES = {
-    "Health Pioneer":   [("Fresh Produce", 32), ("Dairy & Eggs", 18), ("Beverages", 14), ("Bakery", 12), ("Snacks", 8),  ("Other", 16)],
-    "Eco Explorer":     [("Plant-Based",   28), ("Fresh Produce", 22), ("Beverages", 18), ("Dairy & Eggs", 15), ("Other", 17)],
-    "Family Organiser": [("Frozen & Ready",30), ("Dairy & Eggs", 20), ("Bakery", 15),    ("Snacks", 12), ("Other", 23)],
-    "Smart Saver":      [("Frozen & Ready",28), ("Snacks", 20),       ("Beverages", 15), ("Bakery", 15), ("Other", 22)],
-    "Routine Loyalist": [("Deli & Cheese", 25), ("Wine & Spirits", 20),("Bakery", 18),   ("Dairy & Eggs", 17), ("Other", 20)],
-    "Weekend Foodie":   [("Fresh Meat & Fish",30),("Wine & Spirits",20),("Fresh Produce",18),("Dairy & Eggs",12),("Other",20)],
-    "Budget-Conscious": [("Frozen & Ready",25), ("Bakery", 22),       ("Beverages", 18), ("Snacks", 15), ("Other", 20)],
-    "Eco-Progressive":  [("Plant-Based",   25), ("Fresh Produce", 25), ("Beverages", 15), ("Dairy & Eggs", 12), ("Other", 23)],
-}
-
-PRODUCT_RECS = {
-    "Health Pioneer": [
-        {"name": "Organic Spinach", "brand": "Bio Village",   "icon": "🥬", "pts": 50, "tag": "Organic"},
-        {"name": "Greek Yoghurt",   "brand": "Nature's Best", "icon": "🥛", "pts": 40, "tag": "High Protein"},
-        {"name": "Avocados x2",     "brand": "Fresh Select",  "icon": "🥑", "pts": 45, "tag": "Superfood"},
-        {"name": "Blueberries",     "brand": "Berry Farm",    "icon": "🫐", "pts": 35, "tag": "Antioxidant"},
-    ],
-    "Eco Explorer": [
-        {"name": "Oat Milk 1L",       "brand": "Oatly",       "icon": "🌾", "pts": 60, "tag": "Plant-Based"},
-        {"name": "Organic Tofu",      "brand": "Clearspring", "icon": "🫘", "pts": 55, "tag": "Vegan"},
-        {"name": "Eco Washing Tabs",  "brand": "EcoHome",     "icon": "♻️", "pts": 80, "tag": "Zero Waste"},
-        {"name": "Hemp Seeds",        "brand": "Naturgreen",  "icon": "🌿", "pts": 45, "tag": "Eco-Certified"},
-    ],
-    "Family Organiser": [
-        {"name": "Family Lasagne",  "brand": "Barilla",    "icon": "🍝", "pts": 60, "tag": "Family Pack"},
-        {"name": "Orange Juice 2L", "brand": "Tropicana",  "icon": "🍊", "pts": 40, "tag": "Value Pack"},
-        {"name": "Cheese Selection","brand": "Président",  "icon": "🧀", "pts": 55, "tag": "Bundle"},
-        {"name": "Frozen Veg Mix",  "brand": "Bonduelle",  "icon": "🥦", "pts": 35, "tag": "Family Size"},
-    ],
-    "Smart Saver": [
-        {"name": "Own-Brand Pasta",  "brand": "Carrefour", "icon": "🍝", "pts": 30, "tag": "Best Value"},
-        {"name": "Canned Tomatoes",  "brand": "Carrefour", "icon": "🥫", "pts": 25, "tag": "Buy 2 Get 1"},
-        {"name": "Frozen Ready Meal","brand": "Carrefour", "icon": "🍱", "pts": 35, "tag": "Budget Pick"},
-        {"name": "Own-Brand Cereal", "brand": "Carrefour", "icon": "🥣", "pts": 20, "tag": "Everyday Low"},
-    ],
-    "Routine Loyalist": [
-        {"name": "Comté 200g",    "brand": "Président",     "icon": "🧀", "pts": 40, "tag": "Your Usual"},
-        {"name": "Bordeaux Rouge","brand": "Baron de Leys", "icon": "🍷", "pts": 60, "tag": "Favourite"},
-        {"name": "Fresh Baguette","brand": "Boulangerie",   "icon": "🥖", "pts": 20, "tag": "Daily Pick"},
-        {"name": "Butter 250g",   "brand": "Président",     "icon": "🧈", "pts": 25, "tag": "Your Usual"},
-    ],
-    "Weekend Foodie": [
-        {"name": "Salmon Fillet", "brand": "Fresh Ocean",  "icon": "🐟", "pts": 80, "tag": "Premium"},
-        {"name": "Prosecco 75cl", "brand": "Canella",      "icon": "🥂", "pts": 70, "tag": "Weekend Special"},
-        {"name": "Truffle Oil",   "brand": "Urbani",       "icon": "🫙", "pts": 90, "tag": "Gourmet"},
-        {"name": "Wagyu Beef",    "brand": "Select Cuts",  "icon": "🥩", "pts": 100,"tag": "Chef's Pick"},
-    ],
-    "Budget-Conscious": [
-        {"name": "Oat Porridge",    "brand": "Quaker",     "icon": "🥣", "pts": 20, "tag": "Try It"},
-        {"name": "Mixed Salad",     "brand": "Fresh Farm", "icon": "🥗", "pts": 25, "tag": "Discover"},
-        {"name": "Greek Yoghurt",   "brand": "Fage",       "icon": "🥛", "pts": 20, "tag": "New to You"},
-        {"name": "Wholegrain Bread","brand": "Harry's",    "icon": "🍞", "pts": 15, "tag": "Healthy Pick"},
-    ],
-    "Eco-Progressive": [
-        {"name": "Oat Milk 1L",      "brand": "Oatly",       "icon": "🌾", "pts": 55, "tag": "Swap & Save"},
-        {"name": "Lentil Soup",      "brand": "Bjorg",        "icon": "🫘", "pts": 45, "tag": "Eco-Swap"},
-        {"name": "Bamboo Toothbrush","brand": "WooBamboo",    "icon": "🌿", "pts": 70, "tag": "Green Choice"},
-        {"name": "Plant Burger",     "brand": "Beyond Meat",  "icon": "🌱", "pts": 60, "tag": "CO₂ Saved"},
-    ],
-}
-
-BASKET_PRICES = {
-    "Health Pioneer":   [2.49, 1.89, 3.29, 2.99],
-    "Eco Explorer":     [1.99, 3.49, 5.99, 4.29],
-    "Family Organiser": [4.99, 3.49, 5.29, 2.99],
-    "Smart Saver":      [0.79, 0.59, 2.49, 1.29],
-    "Routine Loyalist": [3.99, 8.99, 0.99, 2.29],
-    "Weekend Foodie":   [8.99, 12.99, 9.49, 16.99],
-    "Budget-Conscious": [1.49, 1.99, 0.99, 1.79],
-    "Eco-Progressive":  [1.99, 2.49, 3.99, 5.29],
-}
-
-OFFER_MECHANICS = {
-    "Double Points on Organic": {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 2, "label": "2× Points on Organic & Fresh"},
-    "Eco Challenge":            {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 500, "pts_mult": 1, "label": "+500 Eco Challenge Points"},
-    "Family Bundle Promo":      {"discount_pct": 20, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "20% Family Bundle Discount"},
-    "Reactivation Offer":       {"discount_pct": 0,  "discount_eur": 5,  "bonus_pts": 0,   "pts_mult": 1, "label": "€5.00 Welcome Back Voucher"},
-    "Sustainable Swap":         {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 300, "pts_mult": 1, "label": "+300 Green Swap Points"},
-    "Wellness Mission":         {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 600, "pts_mult": 1, "label": "+600 Vitality Challenge Points"},
-    "Price-Driven Bundle":      {"discount_pct": 33, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "Buy 2 Get 1 Free (33% off)"},
-    "Premium Weekend Deal":     {"discount_pct": 30, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "30% Weekend Premium Deal"},
-    "Loyalty Bonus":            {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 2, "label": "Double Points — Loyalty Bonus"},
-    "Discovery Offer":          {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 200, "pts_mult": 1, "label": "+200 Discovery Points per Item"},
-    "Seasonal Challenge":       {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 800, "pts_mult": 1, "label": "+800 Spring Challenge Points"},
-    "Reactivation Bundle":      {"discount_pct": 33, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "3-for-2 Deal (33% off)"},
-    "Family Mega Bundle":       {"discount_pct": 0,  "discount_eur": 15, "bonus_pts": 0,   "pts_mult": 1, "label": "€15.00 Mega Bundle Saving"},
-    "Eco Bundle Challenge":     {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 500, "pts_mult": 1, "label": "+500 Eco Bundle Points"},
-}
-
-VALIDITY_MAP = {
-    "Weekend": "Valid this weekend only",
-    "Saturday": "Valid this Saturday only",
-    "Saturday Afternoon": "Valid this Saturday only",
-    "Sunday": "Valid this Sunday only",
-    "Weekday Morning": "Valid Mon–Fri, until 12pm",
-    "Monday Morning": "Valid this Monday morning",
-    "Tuesday Morning": "Valid this Tuesday morning",
-    "Wednesday": "Valid this Wednesday",
-    "Wednesday Evening": "Valid Wed evening",
-    "Thursday": "Valid this Thursday",
-    "Friday": "Valid this Friday",
-    "Friday Evening": "Valid Fri–Sat evening",
-    "Morning": "Valid weekday mornings",
-    "Weekend Morning": "Valid Sat–Sun, until 12pm",
-}
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-def score_col(v):
-    return C_GREEN if v >= 70 else (C_AMBER if v >= 50 else C_RED)
-
-def html_card(label, value, color=C_BLUE, sub=None):
-    sub_part = f'<div style="font-size:11px;color:#aaa;margin-top:4px">{sub}</div>' if sub else ""
-    return (
-        f'<div style="background:#fff;border-radius:10px;padding:18px 16px;'
-        f'box-shadow:0 2px 10px rgba(0,0,0,.07);border-top:4px solid {color};'
-        f'text-align:center;height:100%">'
-        f'<div style="font-size:10px;color:#999;text-transform:uppercase;'
-        f'letter-spacing:1px;margin-bottom:8px">{label}</div>'
-        f'<div style="font-size:26px;font-weight:900;color:{color};line-height:1.1">{value}</div>'
-        f'{sub_part}</div>'
-    )
-
-def section_title(text):
-    st.markdown(
-        f'<div style="font-size:11px;font-weight:700;text-transform:uppercase;'
-        f'letter-spacing:2px;color:{C_BLUE};margin:28px 0 14px;'
-        f'padding-bottom:8px;border-bottom:2px solid {C_LTBL}">'
-        f'{text}</div>',
-        unsafe_allow_html=True,
-    )
-
-# ── Charts ────────────────────────────────────────────────────────────────────
-def radar_chart(row):
-    tier_score = {"Bronze": 25, "Silver": 50, "Gold": 75, "Platinum": 95}.get(
-        row["loyalty_tier"], 50
-    )
-    freq_score   = min(round(row["visits_per_month"] / 12 * 100), 100)
-    engage_score = min(row["streak_weeks"] * 9 + 20, 100)
-    categories   = ["Health", "Sustain-<br>ability", "Frequency",
-                    "Engage-<br>ment", "E-com", "Loyalty"]
-    values       = [
-        row["health_score"], row["sustainability_score"],
-        freq_score, engage_score, row["pct_ecommerce"], tier_score,
-    ]
-    values     += [values[0]]
-    categories += [categories[0]]
-    fig = go.Figure(go.Scatterpolar(
-        r=values, theta=categories,
-        fill="toself",
-        fillcolor="rgba(0,74,151,0.18)",
-        line=dict(color=C_BLUE, width=2.5),
-        marker=dict(color=C_BLUE, size=6),
-        hovertemplate="%{theta}: %{r}<extra></extra>",
-    ))
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=False, range=[0, 100]),
-            angularaxis=dict(
-                tickfont=dict(size=11, color="#555", family="Segoe UI, Arial"),
-                linecolor="#ddd", gridcolor="#ddd",
-            ),
-            gridshape="linear",
-            bgcolor="#F8F9FA",
-        ),
-        showlegend=False,
-        margin=dict(l=44, r=44, t=32, b=32),
-        paper_bgcolor="white",
-        height=270,
-    )
-    return fig
-
-def channel_donut(row):
-    ec  = row["pct_ecommerce"]
-    cc  = min(ec * 0.3, 8)
-    sto = round(100 - ec - cc, 1)
-    fig = go.Figure(go.Pie(
-        labels=["In-Store", "E-commerce", "Click & Collect"],
-        values=[sto, ec, cc],
-        hole=0.62,
-        marker=dict(colors=[C_BLUE, C_RED, C_AMBER],
-                    line=dict(color="white", width=2)),
-        textinfo="label+percent",
-        textfont=dict(size=11, family="Segoe UI, Arial"),
-        hovertemplate="%{label}: %{value:.1f}%<extra></extra>",
-    ))
-    fig.update_layout(
-        showlegend=False,
-        margin=dict(l=10, r=10, t=10, b=10),
-        paper_bgcolor="white",
-        height=220,
-    )
-    return fig
-
-def category_bar(row):
-    cats   = CATEGORY_PROFILES.get(row["persona"], [("Other", 100)])
-    labels = [c[0] for c in cats]
-    values = [c[1] for c in cats]
-    colors = [C_BLUE if i == 0 else f"rgba(0,74,151,{0.65 - i*0.1})" for i in range(len(labels))]
-    fig = go.Figure(go.Bar(
-        x=values, y=labels,
-        orientation="h",
-        marker_color=colors,
-        text=[f"{v}%" for v in values],
-        textposition="outside",
-        textfont=dict(size=11, color="#555"),
-        hovertemplate="%{y}: %{x}%<extra></extra>",
-    ))
-    fig.update_layout(
-        xaxis=dict(visible=False, range=[0, max(values) * 1.3]),
-        yaxis=dict(autorange="reversed", tickfont=dict(size=11, color="#444")),
-        margin=dict(l=10, r=40, t=10, b=10),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        height=220,
-        bargap=0.35,
-    )
-    return fig
-
-def impact_chart(row):
-    metrics = ["Engagement\nUplift", "Healthier\nBasket", "Sustainability\nGain", "Retention"]
-    values  = [
-        int(row["engagement_uplift_pct"].replace("+","").replace("%","")),
-        int(row["health_shift_pct"].replace("+","").replace("%","")),
-        int(row["sustainability_improvement_pct"].replace("+","").replace("%","")),
-        int(row["retention_pct"].replace("%","")),
-    ]
-    colors = [C_GREEN, C_GREEN, "#43A047", C_BLUE]
-    fig = go.Figure(go.Bar(
-        x=metrics, y=values,
-        marker_color=colors,
-        text=[f"{v}%" for v in values],
-        textposition="outside",
-        textfont=dict(size=13, family="Segoe UI"),
-        width=0.5,
-    ))
-    fig.add_hline(y=0, line_color="#ccc", line_width=1)
-    fig.update_layout(
-        xaxis=dict(tickfont=dict(size=11, color="#444")),
-        yaxis=dict(range=[0, max(values) * 1.3], showgrid=True,
-                   gridcolor="#F0F0F0", ticksuffix="%",
-                   tickfont=dict(size=11, color="#aaa")),
-        margin=dict(l=20, r=20, t=10, b=10),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        height=240,
-        bargap=0.4,
-    )
-    return fig
-
-# ── CSS ───────────────────────────────────────────────────────────────────────
+# ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-html, body, [class*="css"] {
-    font-family: "Segoe UI", Arial, sans-serif;
-}
-.block-container {
-    padding-top: 1.2rem !important;
-    padding-bottom: 2rem !important;
-    max-width: 1080px !important;
-}
-/* Sidebar */
+html, body, [class*="css"] { font-family: "Segoe UI", Arial, sans-serif; }
+.block-container { padding-top: 1.2rem !important; max-width: 1100px !important; }
 section[data-testid="stSidebar"] > div:first-child {
-    background: linear-gradient(180deg, #002f6c 0%, #004A97 100%);
-    padding-top: 0;
+    background: linear-gradient(180deg,#002f6c 0%,#004A97 100%);
 }
-/* Hide Streamlit branding */
 #MainMenu, footer, header { visibility: hidden; }
-/* Plotly chart rounded corners */
-.js-plotly-plot { border-radius: 10px; overflow: hidden; }
-/* Tab styling */
 button[data-baseweb="tab"] {
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    letter-spacing: .5px !important;
-    padding: 10px 24px !important;
+    font-size: 13px !important; font-weight: 600 !important;
+    letter-spacing: .4px !important; padding: 10px 26px !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
     color: #004A97 !important;
     border-bottom: 3px solid #004A97 !important;
 }
+div[data-testid="metric-container"] { background: white; border-radius: 10px;
+    padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Data ──────────────────────────────────────────────────────────────────────
+# ── Data loading ──────────────────────────────────────────────────────────────
 @st.cache_data
-def load():
-    return pd.read_csv("demo_shopper_profiles.csv")
+def load_data():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo_shopper_profiles.csv")
+    df = pd.read_csv(path)
+    df.columns = df.columns.str.strip().str.lower()
+    return df
 
-df = load()
+df = load_data()
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def g(row, key, default="—"):
+    v = row.get(key, default)
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return default
+    return v
+
+def safe_float(row, key, default=0.0):
+    try:
+        return float(g(row, key, default))
+    except Exception:
+        return float(default)
+
+def safe_int(row, key, default=0):
+    try:
+        return int(float(g(row, key, default)))
+    except Exception:
+        return int(default)
+
+def kpi_card(label, value, color=C_BLUE, sub=None):
+    sub_html = f'<div style="font-size:11px;color:#aaa;margin-top:4px">{sub}</div>' if sub else ""
+    return (
+        f'<div style="background:#fff;border-radius:10px;padding:18px 16px;'
+        f'box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:4px solid {color};text-align:center">'
+        f'<div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px">{label}</div>'
+        f'<div style="font-size:26px;font-weight:900;color:{color};line-height:1.1">{value}</div>'
+        f'{sub_html}</div>'
+    )
+
+def section_hdr(text):
+    st.markdown(
+        f'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;'
+        f'color:{C_BLUE};margin:26px 0 14px;padding-bottom:7px;border-bottom:2px solid {C_LTBL}">'
+        f'{text}</div>', unsafe_allow_html=True
+    )
+
+# ── Charts ────────────────────────────────────────────────────────────────────
+def chart_donut(row):
+    ins  = safe_float(row, "channel_instore", 70)
+    eco  = safe_float(row, "channel_ecommerce", 20)
+    cc   = safe_float(row, "channel_clickcollect", 10)
+    fig = go.Figure(go.Pie(
+        labels=["In-Store", "E-commerce", "Click & Collect"],
+        values=[ins, eco, cc],
+        hole=0.62,
+        marker=dict(colors=[C_BLUE, C_RED, C_AMBER], line=dict(color="white", width=2)),
+        textinfo="label+percent",
+        textfont=dict(size=11),
+        hovertemplate="%{label}: %{value:.0f}%<extra></extra>",
+    ))
+    fig.update_layout(showlegend=False, margin=dict(l=10,r=10,t=10,b=10),
+                      paper_bgcolor="white", height=210)
+    return fig
+
+def chart_categories(row):
+    cats = [g(row,"category_1","—"), g(row,"category_2","—"), g(row,"category_3","—")]
+    vals = [safe_float(row,"cat_1_share",30), safe_float(row,"cat_2_share",20), safe_float(row,"cat_3_share",15)]
+    colors = [C_BLUE, f"rgba(0,74,151,.65)", f"rgba(0,74,151,.40)"]
+    fig = go.Figure(go.Bar(
+        x=vals, y=cats, orientation="h",
+        marker_color=colors,
+        text=[f"{v:.0f}%" for v in vals], textposition="outside",
+        textfont=dict(size=11, color="#555"),
+        hovertemplate="%{y}: %{x}%<extra></extra>",
+    ))
+    fig.update_layout(
+        xaxis=dict(visible=False, range=[0, max(vals)*1.35]),
+        yaxis=dict(autorange="reversed", tickfont=dict(size=11, color="#444")),
+        margin=dict(l=10,r=50,t=10,b=10),
+        paper_bgcolor="white", plot_bgcolor="white",
+        height=150, bargap=0.35,
+    )
+    return fig
+
+def chart_radar(row):
+    tier_score = {"Bronze":20,"Silver":45,"Gold":70,"Platinum":95}.get(str(g(row,"loyalty_tier","")), 50)
+    freq_score = min(int(safe_float(row,"visits_per_month",5) / 15 * 100), 100)
+    eng_score  = min(safe_int(row,"streak_weeks",0) * 10 + 20, 100)
+    vals = [
+        safe_float(row,"health_score",50),
+        safe_float(row,"sustainability_score",50),
+        freq_score, eng_score,
+        safe_float(row,"channel_ecommerce",20),
+        tier_score,
+    ]
+    cats = ["Health","Sustain-<br>ability","Frequency","Engage-<br>ment","E-com","Loyalty"]
+    fig = go.Figure(go.Scatterpolar(
+        r=vals + [vals[0]], theta=cats + [cats[0]],
+        fill="toself", fillcolor="rgba(0,74,151,.18)",
+        line=dict(color=C_BLUE, width=2.5),
+        marker=dict(color=C_BLUE, size=5),
+        hovertemplate="%{theta}: %{r:.0f}<extra></extra>",
+    ))
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=False, range=[0,100]),
+            angularaxis=dict(tickfont=dict(size=11, color="#555"), gridcolor="#ddd"),
+            gridshape="linear", bgcolor="#F8F9FA",
+        ),
+        showlegend=False,
+        margin=dict(l=44,r=44,t=28,b=28),
+        paper_bgcolor="white", height=260,
+    )
+    return fig
+
+def chart_impact(row):
+    labels = ["Engagement\nUplift","Healthier\nBasket","Sustainability\nGain","Retention"]
+    vals   = [
+        safe_int(row,"engagement_uplift",20),
+        safe_int(row,"basket_health_shift",12),
+        safe_int(row,"sustainability_gain",10),
+        safe_int(row,"retention_pct",70),
+    ]
+    fig = go.Figure(go.Bar(
+        x=labels, y=vals,
+        marker_color=[C_GREEN, C_GREEN, "#43A047", C_BLUE],
+        text=[f"{v}%" for v in vals], textposition="outside",
+        textfont=dict(size=13), width=0.5,
+    ))
+    fig.update_layout(
+        xaxis=dict(tickfont=dict(size=11, color="#444")),
+        yaxis=dict(range=[0,max(vals)*1.3], showgrid=True, gridcolor="#F0F0F0",
+                   ticksuffix="%", tickfont=dict(size=11,color="#aaa")),
+        margin=dict(l=20,r=20,t=10,b=10),
+        paper_bgcolor="white", plot_bgcolor="white",
+        height=230, bargap=0.4,
+    )
+    return fig
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div style="background:rgba(0,0,0,.25);padding:18px 16px 14px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <div style="background:#CC0000;padding:5px 10px;border-radius:6px;
-                    font-size:13px;font-weight:900;color:#fff;letter-spacing:.4px">Catalina</div>
+    <div style="background:rgba(0,0,0,.22);padding:18px 16px 14px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="background:#CC0000;padding:4px 10px;border-radius:5px;
+                    font-size:12px;font-weight:900;color:#fff">Catalina</div>
         <div style="font-size:16px;font-weight:800;color:#fff">GreenBasket</div>
       </div>
-      <div style="font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.5px">
+      <div style="font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.6px">
         Shopper Intelligence Demo
       </div>
     </div>
@@ -408,363 +240,313 @@ with st.sidebar:
 
     opts = {
         f"{r['name']}  ·  {r['persona']}": r["shopper_id"]
-        for _, r in df.sort_values(["segment", "persona"]).iterrows()
+        for _, r in df.sort_values(["segment","persona"]).iterrows()
     }
-    chosen_label = st.selectbox(
-        "shopper", list(opts.keys()), label_visibility="collapsed"
-    )
-    row = df[df["shopper_id"] == opts[chosen_label]].iloc[0]
+    chosen = st.selectbox("shopper", list(opts.keys()), label_visibility="collapsed")
+    row = df[df["shopper_id"] == opts[chosen]].iloc[0].to_dict()
 
     st.markdown(
-        '<div style="padding:8px 16px 16px;font-size:10px;'
-        'color:rgba(255,255,255,.3);text-align:center">Synthetic data · Demo</div>',
+        '<div style="padding:10px 16px 16px;font-size:10px;'
+        'color:rgba(255,255,255,.28);text-align:center">Synthetic data · Demo only</div>',
         unsafe_allow_html=True,
     )
 
-# ── HEADER (shared across both tabs) ─────────────────────────────────────────
-_tc   = TIER_COL.get(row["loyalty_tier"], "#777")
-_pbg, _pcol = {
-    "Health Pioneer":   ("#E8F5E9", "#2E7D32"),
-    "Eco Explorer":     ("#E0F2F1", "#00695C"),
-    "Family Organiser": ("#E3F2FD", "#1565C0"),
-    "Smart Saver":      ("#FFF8E1", "#E65100"),
-    "Routine Loyalist": ("#F3E5F5", "#6A1B9A"),
-    "Weekend Foodie":   ("#FFF3E0", "#BF360C"),
-    "Budget-Conscious": ("#FFF8E1", "#BF360C"),
-    "Eco-Progressive":  ("#E8F5E9", "#2E7D32"),
-}.get(row["persona"], ("#E8F1FB", "#004A97"))
+# ── GLOBAL HEADER ─────────────────────────────────────────────────────────────
+_tc       = TIER_COL.get(str(g(row,"loyalty_tier","Bronze")), "#777")
+_pbg,_pcol = PERSONA_COL.get(str(g(row,"persona","")), (C_LTBL, C_BLUE))
 
 st.markdown(f"""
-<div style="background:linear-gradient(135deg,#004A97 0%,#0066CC 100%);
-            border-radius:12px;padding:22px 26px;margin-bottom:20px;
+<div style="background:linear-gradient(135deg,#003478 0%,#0058b8 100%);
+            border-radius:12px;padding:22px 28px;margin-bottom:20px;
             display:flex;align-items:center;justify-content:space-between;
-            box-shadow:0 4px 18px rgba(0,74,151,.3)">
+            box-shadow:0 4px 20px rgba(0,52,120,.28)">
   <div>
-    <div style="font-size:10px;color:#A8C8F0;text-transform:uppercase;
-                letter-spacing:2px;margin-bottom:5px">
+    <div style="font-size:10px;color:#90BBE8;text-transform:uppercase;
+                letter-spacing:2px;margin-bottom:6px">
       Catalina · GreenBasket Intelligence Demo
     </div>
-    <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:10px">
-      {row['name']}
+    <div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:10px">
+      {g(row,'name')}
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="background:{_pbg};color:{_pcol};padding:5px 14px;
                    border-radius:20px;font-size:13px;font-weight:700">
-        ✦ {row['persona']}
+        ✦ {g(row,'persona')}
       </span>
       <span style="background:rgba(255,255,255,.15);color:#fff;padding:5px 14px;
                    border-radius:20px;font-size:12px">
-        {SEG_ICON.get(row['segment'], '')} {row['segment']}
+        {g(row,'segment')}
       </span>
       <span style="background:{_tc};color:#fff;padding:5px 14px;
                    border-radius:20px;font-size:12px;font-weight:700">
-        ⭐ {row['loyalty_tier']}
+        ★ {g(row,'loyalty_tier')}
       </span>
     </div>
   </div>
-  <div style="text-align:right;color:#fff;flex-shrink:0;margin-left:24px">
-    <div style="font-size:11px;color:#A8C8F0;margin-bottom:2px">Age Group</div>
-    <div style="font-size:20px;font-weight:700">{row['age_group']}</div>
+  <div style="text-align:right;flex-shrink:0;margin-left:24px">
+    <div style="font-size:11px;color:#90BBE8;margin-bottom:3px">Age Group</div>
+    <div style="font-size:26px;font-weight:700;color:#fff">{g(row,'age_group')}</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ── TABS ──────────────────────────────────────────────────────────────────────
-tab_biz, tab_shop, tab_sim = st.tabs(
-    ["  Business View  ", "  Shopper View  ", "  Checkout Experience  "]
-)
+tab1, tab2, tab3 = st.tabs(["  Business View  ","  Shopper View  ","  Checkout Journey  "])
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 · BUSINESS VIEW
 # ═════════════════════════════════════════════════════════════════════════════
-with tab_biz:
+with tab1:
 
-    # ── SECTION 1 · SHOPPER PROFILE ──────────────────────────────────────────
-    section_title("Shopper Profile")
+    # ── KPI cards ────────────────────────────────────────────────────────────
+    section_hdr("Shopper Profile")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(html_card("Annual Spend", f"€{row['total_spend']:,.0f}", C_BLUE,
-                              f"{row['num_transactions'] if 'num_transactions' in row else '—'} transactions"), unsafe_allow_html=True)
-    with c2:
-        st.markdown(html_card("Avg Basket Value", f"€{row['avg_basket_value']:.1f}", C_RED), unsafe_allow_html=True)
-    with c3:
-        st.markdown(html_card("Visits / Month", f"{row['visits_per_month']}", C_GREEN,
-                              f"{row['pct_ecommerce']}% online"), unsafe_allow_html=True)
-    with c4:
-        st.markdown(html_card("Points Balance", f"{row['points_balance']:,}", C_AMBER,
-                              f"{row['points_to_next_reward']:,} to next reward"), unsafe_allow_html=True)
+    c1,c2,c3,c4 = st.columns(4)
+    spend = safe_float(row,"annual_spend",0)
+    abv   = safe_float(row,"avg_basket_value",0)
+    vpm   = safe_float(row,"visits_per_month",0)
+    pts   = safe_int(row,"points_balance",0)
+    ec    = safe_float(row,"channel_ecommerce",0)
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    with c1: st.markdown(kpi_card("Annual Spend",f"€{spend:,.0f}",C_BLUE), unsafe_allow_html=True)
+    with c2: st.markdown(kpi_card("Avg Basket Value",f"€{abv:.1f}",C_RED), unsafe_allow_html=True)
+    with c3: st.markdown(kpi_card("Visits / Month",f"{vpm:.1f}",C_GREEN,f"{ec:.0f}% online"), unsafe_allow_html=True)
+    with c4: st.markdown(kpi_card("Points Balance",f"{pts:,}",C_AMBER,f"{safe_int(row,'next_reward_gap',0):,} to next reward"), unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns([1, 1.1, 1])
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    with c1:
+    # ── Behavioural overview ─────────────────────────────────────────────────
+    section_hdr("Behavioural Overview")
+
+    col_don, col_cat, col_hs = st.columns([1,1,1])
+
+    with col_don:
         st.markdown(
-            '<div style="background:#fff;border-radius:10px;padding:16px 16px 8px;'
-            'box-shadow:0 2px 10px rgba(0,0,0,.07)">'
-            '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;'
-            'letter-spacing:1px;margin-bottom:2px">Channel Mix</div></div>',
-            unsafe_allow_html=True,
+            f'<div style="background:#fff;border-radius:10px;padding:14px 14px 4px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,.06)">'
+            f'<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;'
+            f'letter-spacing:1px">Channel Mix</div></div>',
+            unsafe_allow_html=True
         )
-        st.plotly_chart(channel_donut(row), use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(chart_donut(row), use_container_width=True, config={"displayModeBar":False})
 
-    with c2:
+    with col_cat:
         st.markdown(
-            '<div style="background:#fff;border-radius:10px;padding:16px 16px 8px;'
-            'box-shadow:0 2px 10px rgba(0,0,0,.07)">'
-            '<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;'
-            'letter-spacing:1px;margin-bottom:2px">Category Preferences (% spend)</div></div>',
-            unsafe_allow_html=True,
+            f'<div style="background:#fff;border-radius:10px;padding:14px 14px 4px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,.06)">'
+            f'<div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;'
+            f'letter-spacing:1px">Top Categories</div></div>',
+            unsafe_allow_html=True
         )
-        st.plotly_chart(category_bar(row), use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(chart_categories(row), use_container_width=True, config={"displayModeBar":False})
 
-    with c3:
-        nc  = BADGE_COL.get(str(row["nutri_score"]), "#aaa")
-        ec  = BADGE_COL.get(str(row["eco_score"]),   "#aaa")
-        hc  = C_AMBER
-        sc2 = C_GREEN
-        hs  = row["health_score"]
-        ss  = row["sustainability_score"]
-        streak_col = C_AMBER if row["streak_weeks"] > 0 else "#aaa"
+    with col_hs:
+        hs  = safe_int(row,"health_score",50)
+        ss  = safe_int(row,"sustainability_score",50)
+        ns  = str(g(row,"nutri_score","C"))
+        es  = str(g(row,"eco_score","C"))
+        nc  = NUTRI_ECO_COL.get(ns,"#aaa")
+        ecc = NUTRI_ECO_COL.get(es,"#aaa")
+        hc  = C_GREEN if hs >= 70 else (C_AMBER if hs >= 50 else C_RED)
+        sc  = C_GREEN if ss >= 70 else (C_AMBER if ss >= 50 else C_RED)
+        streak = safe_int(row,"streak_weeks",0)
         st.markdown(f"""
         <div style="background:#fff;border-radius:10px;padding:16px;
-                    box-shadow:0 2px 10px rgba(0,0,0,.07);height:100%">
+                    box-shadow:0 2px 8px rgba(0,0,0,.06);height:100%">
           <div style="font-size:11px;font-weight:700;color:{C_GREEN};text-transform:uppercase;
-                      letter-spacing:1px;margin-bottom:12px">Health &amp; Sustainability</div>
-          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">
-            <div style="background:{nc};color:#fff;width:52px;height:52px;border-radius:10px;
-                        display:flex;flex-direction:column;align-items:center;
-                        justify-content:center;font-size:20px;font-weight:900;flex-shrink:0">
-              {row['nutri_score']}<span style="font-size:7px;font-weight:400">NUTRI</span>
+                      letter-spacing:1px;margin-bottom:12px">Health & Sustainability</div>
+          <div style="display:flex;gap:10px;margin-bottom:14px">
+            <div style="background:{nc};color:#fff;width:50px;height:50px;border-radius:9px;
+                        display:flex;flex-direction:column;align-items:center;justify-content:center;
+                        font-size:20px;font-weight:900;flex-shrink:0">
+              {ns}<span style="font-size:7px;font-weight:400">NUTRI</span>
             </div>
-            <div style="background:{ec};color:#fff;width:52px;height:52px;border-radius:10px;
-                        display:flex;flex-direction:column;align-items:center;
-                        justify-content:center;font-size:20px;font-weight:900;flex-shrink:0">
-              {row['eco_score']}<span style="font-size:7px;font-weight:400">ECO</span>
+            <div style="background:{ecc};color:#fff;width:50px;height:50px;border-radius:9px;
+                        display:flex;flex-direction:column;align-items:center;justify-content:center;
+                        font-size:20px;font-weight:900;flex-shrink:0">
+              {es}<span style="font-size:7px;font-weight:400">ECO</span>
             </div>
             <div style="font-size:11px;color:#666;line-height:1.8">
-              <div style="font-size:10px;color:#aaa;margin-bottom:2px">Avg basket quality scores</div>
-              <div>Top category: <strong style="color:#333">{row['top_category']}</strong></div>
-              <div>E-commerce: <strong style="color:#333">{row['pct_ecommerce']}%</strong></div>
+              <div>Top category: <strong>{g(row,'category_1')}</strong></div>
+              <div>E-commerce: <strong>{ec:.0f}%</strong></div>
             </div>
           </div>
           <div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;
-                        font-size:11px;color:#555;margin-bottom:4px">
-              <span>Health Score</span>
-              <span style="font-weight:700;color:{hc}">{hs}/100</span>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:4px">
+              <span>Health Score</span><span style="font-weight:700;color:{hc}">{hs}/100</span>
             </div>
-            <div style="background:#F0F0F0;border-radius:6px;height:8px">
-              <div style="width:{hs}%;height:8px;border-radius:6px;background:{hc}"></div>
+            <div style="background:#F0F0F0;border-radius:5px;height:7px">
+              <div style="width:{hs}%;height:7px;border-radius:5px;background:{hc}"></div>
             </div>
           </div>
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;
-                        font-size:11px;color:#555;margin-bottom:4px">
-              <span>Sustainability Score</span>
-              <span style="font-weight:700;color:{sc2}">{ss}/100</span>
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:4px">
+              <span>Sustainability Score</span><span style="font-weight:700;color:{sc}">{ss}/100</span>
             </div>
-            <div style="background:#F0F0F0;border-radius:6px;height:8px">
-              <div style="width:{ss}%;height:8px;border-radius:6px;background:{sc2}"></div>
+            <div style="background:#F0F0F0;border-radius:5px;height:7px">
+              <div style="width:{ss}%;height:7px;border-radius:5px;background:{sc}"></div>
             </div>
           </div>
-          <div style="background:#FFF8E1;border-radius:8px;padding:8px 12px;font-size:12px;
-                      font-weight:600;color:{streak_col};text-align:center">
-            🔥 {row['streak_weeks']}-week healthy basket streak
+          <div style="background:#FFF8E1;border-radius:8px;padding:7px 11px;font-size:12px;
+                      font-weight:600;color:{C_AMBER};text-align:center">
+            🔥 {streak}-week healthy basket streak
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── SECTION 2 · PERSONA ──────────────────────────────────────────────────
-    section_title("Shopper Persona")
+    # ── Persona ───────────────────────────────────────────────────────────────
+    section_hdr("Shopper Persona")
 
-    meta   = PERSONA_META.get(row["persona"], {})
-    p_icon = meta.get("icon", "👤")
-    p_bg, p_col = {
-        "Health Pioneer":   ("#E8F5E9", C_GREEN),
-        "Eco Explorer":     ("#E0F2F1", "#00695C"),
-        "Family Organiser": ("#E3F2FD", "#1565C0"),
-        "Smart Saver":      ("#FFF8E1", "#E65100"),
-        "Routine Loyalist": ("#F3E5F5", "#6A1B9A"),
-        "Weekend Foodie":   ("#FFF3E0", "#BF360C"),
-        "Budget-Conscious": ("#FFF8E1", "#BF360C"),
-        "Eco-Progressive":  ("#E8F5E9", C_GREEN),
-    }.get(row["persona"], (C_LTBL, C_BLUE))
+    persona = str(g(row,"persona",""))
+    pbg2, pcol2 = PERSONA_COL.get(persona, (C_LTBL, C_BLUE))
 
-    col_p, col_r = st.columns([1.35, 1])
+    col_persona, col_radar = st.columns([1.3,1])
 
-    with col_p:
+    with col_persona:
+        mission_desc = g(row,"mission_description","—")
+        act_reason   = g(row,"activation_reason","—")
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg,{C_LTBL} 0%,#F0F7FF 100%);
-                    border:1.5px solid #B3D1F0;border-radius:12px;padding:20px 24px;height:100%">
+        <div style="background:linear-gradient(135deg,{C_LTBL} 0%,#EBF3FF 100%);
+                    border:1.5px solid #C5DCEF;border-radius:12px;padding:20px 22px;height:100%">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="background:{p_bg};color:{p_col};width:52px;height:52px;border-radius:12px;
+            <div style="background:{pbg2};color:{pcol2};width:52px;height:52px;border-radius:11px;
                         font-size:26px;display:flex;align-items:center;justify-content:center;
-                        flex-shrink:0">{p_icon}</div>
+                        flex-shrink:0">{PERSONA_COL.get(persona,(_,""))[0][:2] if False else "👤"}</div>
             <div>
-              <div style="font-size:18px;font-weight:800;color:{C_BLUE}">{row['persona']}</div>
+              <div style="font-size:18px;font-weight:800;color:{C_BLUE}">{persona}</div>
               <div style="margin-top:4px">
                 <span style="background:{C_BLUE};color:#fff;padding:3px 10px;border-radius:20px;
-                             font-size:11px;font-weight:600">{row['segment']}</span>
+                             font-size:11px;font-weight:600">{g(row,'segment')}</span>
                 &nbsp;
-                <span style="background:{p_bg};color:{p_col};padding:3px 10px;border-radius:20px;
-                             font-size:11px;font-weight:600;border:1px solid {p_col}33">
-                  {row['age_group']}
-                </span>
+                <span style="background:{pbg2};color:{pcol2};padding:3px 10px;border-radius:20px;
+                             font-size:11px;font-weight:600;border:1px solid {pcol2}33">{g(row,'age_group')}</span>
               </div>
             </div>
           </div>
-          <div style="font-size:13px;color:#444;line-height:1.65;margin-bottom:12px">
-            {meta.get('desc', '—')}
+          <div style="font-size:13px;color:#444;line-height:1.65;margin-bottom:14px">
+            {mission_desc}
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div style="background:rgba(255,255,255,.7);border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;color:#999;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:3px">Motivation</div>
-              <div style="font-size:12px;color:#333;line-height:1.5">{meta.get('motivation','—')}</div>
+          <div style="background:rgba(255,255,255,.75);border-radius:8px;padding:11px 14px">
+            <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
+              Why this activation?
             </div>
-            <div style="background:rgba(255,255,255,.7);border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;color:#999;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:3px">Activation Opportunity</div>
-              <div style="font-size:12px;color:#333;line-height:1.5">{meta.get('opportunity','—')}</div>
-            </div>
+            <div style="font-size:12px;color:#333;line-height:1.55">{act_reason}</div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-    with col_r:
+    with col_radar:
         st.markdown(
-            '<div style="background:#fff;border-radius:12px;padding:16px 16px 4px;'
-            'box-shadow:0 2px 10px rgba(0,0,0,.07)">'
+            f'<div style="background:#fff;border-radius:12px;padding:14px 14px 4px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,.06)">'
             f'<div style="font-size:11px;font-weight:700;color:{C_BLUE};text-transform:uppercase;'
-            'letter-spacing:1.5px;margin-bottom:0">Behavioural Profile</div>'
-            '</div>',
-            unsafe_allow_html=True,
+            f'letter-spacing:1.5px">Behavioural Profile</div></div>',
+            unsafe_allow_html=True
         )
-        st.plotly_chart(radar_chart(row), use_container_width=True, config={"displayModeBar": False})
-        st.markdown(
-            '<div style="text-align:center;font-size:11px;color:#aaa;margin-top:-18px;'
-            'padding-bottom:6px">Multi-dimensional shopper behaviour analysis</div>',
-            unsafe_allow_html=True,
-        )
+        st.plotly_chart(chart_radar(row), use_container_width=True, config={"displayModeBar":False})
 
-    # ── SECTION 3 · GAMIFIED REWARDS ─────────────────────────────────────────
-    section_title("Rewards Journey")
+    # ── Rewards Journey ───────────────────────────────────────────────────────
+    section_hdr("Rewards Journey")
 
-    total_pts = row["points_balance"] + row["points_to_next_reward"]
-    prog_pct  = int(row["points_balance"] / total_pts * 100)
-    badges    = [str(row.get(b, "")) for b in ["badge_health", "badge_eco", "badge_loyalty"]]
-    badges    = [b for b in badges if b not in ("", "nan")]
+    pts_total = pts + safe_int(row,"next_reward_gap",1)
+    prog_pct  = int(pts / pts_total * 100) if pts_total > 0 else 0
+    badges    = [str(g(row,b,"")) for b in ["badge_1","badge_2","badge_3"]]
+    badges    = [b for b in badges if b and b != "—"]
 
-    col_r2, col_m = st.columns([1, 1.2])
+    badge_chips = "".join(
+        f'<span style="background:{C_LTBL};color:{C_BLUE};padding:4px 12px;border-radius:20px;'
+        f'font-size:12px;font-weight:600;margin:2px 3px;display:inline-block;border:1px solid #C5DCEF">'
+        f'{BADGE_ICON.get(b,"🏅")} {b}</span>'
+        for b in badges
+    ) or f'<span style="color:#aaa;font-size:12px">Complete missions to earn badges</span>'
 
-    with col_r2:
-        badge_html = "".join(
-            f'<span style="background:{C_LTBL};color:{C_BLUE};padding:4px 12px;'
-            f'border-radius:20px;font-size:12px;font-weight:600;margin:2px 3px;'
-            f'display:inline-block;border:1px solid #B3D1F0">🏅 {b}</span>'
-            for b in badges
-        ) or f'<span style="color:#aaa;font-size:12px">No badges yet — start your journey!</span>'
+    col_rj, col_mission = st.columns([1,1.2])
 
+    with col_rj:
         st.markdown(f"""
         <div style="background:#fff;border-radius:12px;padding:20px;
-                    box-shadow:0 2px 10px rgba(0,0,0,.07)">
-          <div style="display:flex;justify-content:space-between;align-items:center;
-                      margin-bottom:6px">
-            <span style="font-size:13px;color:#555;font-weight:500">Progress to next reward</span>
+                    box-shadow:0 2px 8px rgba(0,0,0,.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:13px;color:#555">Progress to next reward</span>
             <span style="font-size:15px;font-weight:900;color:{C_BLUE}">{prog_pct}%</span>
           </div>
-          <div style="background:#E8EAED;border-radius:8px;height:14px;overflow:hidden;margin-bottom:5px">
-            <div style="width:{prog_pct}%;height:14px;border-radius:8px;
+          <div style="background:#E8EAED;border-radius:7px;height:12px;overflow:hidden;margin-bottom:5px">
+            <div style="width:{prog_pct}%;height:12px;border-radius:7px;
                         background:linear-gradient(90deg,{C_BLUE},{C_BLUE}cc)"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;
-                      font-size:11px;color:#aaa;margin-bottom:18px">
-            <span>{row['points_balance']:,} pts accumulated</span>
-            <span>{row['points_to_next_reward']:,} pts needed</span>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-bottom:16px">
+            <span>{pts:,} pts</span>
+            <span>{safe_int(row,'next_reward_gap',0):,} pts needed</span>
           </div>
-          <div style="font-size:11px;font-weight:700;color:#666;
-                      text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
-            Earned Badges
-          </div>
-          <div>{badge_html}</div>
+          <div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;
+                      letter-spacing:1px;margin-bottom:8px">Earned Badges</div>
+          <div>{badge_chips}</div>
         </div>
         """, unsafe_allow_html=True)
 
-    with col_m:
+    with col_mission:
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg,{C_LTBL} 0%,#F0F7FF 100%);
-                    border:1.5px solid #B3D1F0;border-radius:12px;padding:20px">
+        <div style="background:linear-gradient(135deg,{C_LTBL} 0%,#EBF3FF 100%);
+                    border:1.5px solid #C5DCEF;border-radius:12px;padding:20px">
           <div style="font-size:11px;font-weight:700;color:{C_BLUE};text-transform:uppercase;
-                      letter-spacing:1px;margin-bottom:12px">🎯 Active Mission</div>
-          <div style="font-size:15px;font-weight:700;color:#333;margin-bottom:12px;line-height:1.5">
-            {row['recommended_offer_text']}
+                      letter-spacing:1px;margin-bottom:10px">Active Mission</div>
+          <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:12px;line-height:1.55">
+            {g(row,'activation_message')}
           </div>
-          <div style="background:white;border-radius:8px;padding:12px;
-                      border-left:4px solid {C_AMBER}">
-            <div style="font-size:11px;color:#999;margin-bottom:2px">Offer type</div>
-            <div style="font-size:14px;font-weight:700;color:#333">
-              🎁 {row['recommended_offer_type']}
-            </div>
+          <div style="background:white;border-radius:8px;padding:10px 14px;border-left:4px solid {C_AMBER}">
+            <div style="font-size:10px;color:#999;margin-bottom:2px">Offer type</div>
+            <div style="font-size:13px;font-weight:700;color:#333">🎁 {g(row,'activation_offer_type')}</div>
           </div>
-          <div style="margin-top:12px;display:flex;gap:8px">
-            <div style="flex:1;background:white;border-radius:8px;padding:10px;text-align:center">
-              <div style="font-size:11px;color:#999;margin-bottom:2px">Streak</div>
-              <div style="font-size:18px;font-weight:800;color:{C_AMBER}">
-                🔥 {row['streak_weeks']}w
-              </div>
+          <div style="margin-top:11px;display:flex;gap:8px">
+            <div style="flex:1;background:white;border-radius:8px;padding:9px;text-align:center">
+              <div style="font-size:10px;color:#999;margin-bottom:2px">Streak</div>
+              <div style="font-size:18px;font-weight:800;color:{C_AMBER}">🔥 {safe_int(row,'streak_weeks',0)}w</div>
             </div>
-            <div style="flex:1;background:white;border-radius:8px;padding:10px;text-align:center">
-              <div style="font-size:11px;color:#999;margin-bottom:2px">Total Points</div>
-              <div style="font-size:18px;font-weight:800;color:{C_BLUE}">
-                {row['points_balance']:,}
-              </div>
+            <div style="flex:1;background:white;border-radius:8px;padding:9px;text-align:center">
+              <div style="font-size:10px;color:#999;margin-bottom:2px">Points</div>
+              <div style="font-size:18px;font-weight:800;color:{C_BLUE}">{pts:,}</div>
             </div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── SECTION 4 · OMNICHANNEL ACTIVATION ───────────────────────────────────
-    section_title("Omnichannel Activation")
+    # ── Activation recommendation ─────────────────────────────────────────────
+    section_hdr("Omnichannel Activation")
 
-    ch_icon = CH_ICON.get(row["recommended_channel"], "📣")
-    col_act, col_why = st.columns([1, 1.4])
+    ch      = str(g(row,"activation_channel","—"))
+    timing  = str(g(row,"activation_timing","—"))
+    off_type= str(g(row,"activation_offer_type","—"))
+    message = str(g(row,"activation_message","—"))
+    reason  = str(g(row,"activation_reason","—"))
+    ch_icon = CH_ICON.get(ch, "📣")
+
+    col_act, col_why = st.columns([1,1.4])
 
     with col_act:
         st.markdown(f"""
         <div style="background:linear-gradient(135deg,#FFF5F5 0%,#FFF0F0 100%);
                     border:1.5px solid #FFCDD2;border-left:5px solid {C_RED};
                     border-radius:12px;padding:20px">
-          <div style="font-size:11px;color:#999;text-transform:uppercase;
-                      letter-spacing:1px;margin-bottom:14px">Recommended Activation</div>
-          <div style="margin-bottom:12px">
-            <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                        letter-spacing:1px;margin-bottom:4px">Channel</div>
-            <div style="font-size:18px;font-weight:800;color:{C_RED}">
-              {ch_icon} {row['recommended_channel']}
-            </div>
+          <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">
+            Recommended Activation
+          </div>
+          <div style="font-size:18px;font-weight:800;color:{C_RED};margin-bottom:14px">
+            {ch_icon} {ch}
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-            <div style="background:rgba(255,255,255,.7);border-radius:8px;padding:10px">
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:3px">Timing</div>
-              <div style="font-size:13px;font-weight:700;color:#333">
-                ⏰ {row['recommended_timing']}
-              </div>
+            <div style="background:rgba(255,255,255,.8);border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Timing</div>
+              <div style="font-size:13px;font-weight:700;color:#333">⏰ {timing}</div>
             </div>
-            <div style="background:rgba(255,255,255,.7);border-radius:8px;padding:10px">
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:3px">Offer type</div>
-              <div style="font-size:13px;font-weight:700;color:#333">
-                🎁 {row['recommended_offer_type']}
-              </div>
+            <div style="background:rgba(255,255,255,.8);border-radius:8px;padding:10px">
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Offer Type</div>
+              <div style="font-size:13px;font-weight:700;color:#333">🎁 {off_type}</div>
             </div>
           </div>
-          <div style="background:rgba(255,255,255,.8);border-radius:8px;padding:10px 12px">
-            <div style="font-size:12px;color:#444;line-height:1.55">
-              <strong style="color:#333">Message:</strong><br/>
-              {row['recommended_offer_text']}
+          <div style="background:rgba(255,255,255,.9);border-radius:8px;padding:10px 12px">
+            <div style="font-size:11px;color:#555;line-height:1.55">
+              <strong>Message:</strong> {message}
             </div>
           </div>
         </div>
@@ -773,189 +555,165 @@ with tab_biz:
     with col_why:
         st.markdown(f"""
         <div style="background:#fff;border-radius:12px;padding:20px;
-                    box-shadow:0 2px 10px rgba(0,0,0,.07);height:100%">
+                    box-shadow:0 2px 8px rgba(0,0,0,.06);height:100%">
           <div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;
-                      letter-spacing:1px;margin-bottom:14px">Why this activation?</div>
-          <div style="font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">
-            {row['activation_reason']}
-          </div>
+                      letter-spacing:1px;margin-bottom:12px">Why this activation?</div>
+          <div style="font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">{reason}</div>
           <div style="background:{C_LTBL};border-radius:8px;padding:12px 14px">
             <div style="font-size:10px;color:{C_BLUE};font-weight:700;text-transform:uppercase;
-                        letter-spacing:1px;margin-bottom:6px">Data signals used</div>
+                        letter-spacing:1px;margin-bottom:8px">Data signals used</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              <span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;
-                           font-size:11px;border:1px solid #B3D1F0">📊 Purchase frequency</span>
-              <span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;
-                           font-size:11px;border:1px solid #B3D1F0">🛒 Channel preference</span>
-              <span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;
-                           font-size:11px;border:1px solid #B3D1F0">🌿 Health trajectory</span>
-              <span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;
-                           font-size:11px;border:1px solid #B3D1F0">🎯 Offer response history</span>
-              <span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;
-                           font-size:11px;border:1px solid #B3D1F0">🏷️ Product Nutri/Eco scores</span>
+              {"".join(f'<span style="background:white;color:{C_BLUE};padding:3px 10px;border-radius:20px;font-size:11px;border:1px solid #C5DCEF">{s}</span>' for s in ["📊 Purchase frequency","🛒 Channel preference","🌿 Health trajectory","🎯 Offer response history","🏷️ Nutri / Eco scores"])}
             </div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # ── SECTION 5 · SIMULATED IMPACT ─────────────────────────────────────────
-    section_title("Simulated Business Impact")
+    # ── Simulated impact ──────────────────────────────────────────────────────
+    section_hdr("Simulated Business Impact")
+    st.markdown('<div style="font-size:11px;color:#aaa;margin-top:-10px;margin-bottom:14px">Simulated model output — for demonstration purposes</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        '<div style="font-size:11px;color:#aaa;margin-top:-10px;margin-bottom:14px">'
-        'Simulated model output — for demonstration purposes</div>',
-        unsafe_allow_html=True,
-    )
-
-    ci1, ci2, ci3, ci4 = st.columns(4)
-    impact_cards = [
-        (ci1, "Engagement Uplift",    row["engagement_uplift_pct"],          C_GREEN,  "#F1F8F2"),
-        (ci2, "Healthier Basket",     row["health_shift_pct"],               "#43A047", "#F1F8F2"),
-        (ci3, "Sustainability Gain",  row["sustainability_improvement_pct"], "#66BB6A", "#F1F8F2"),
-        (ci4, "Retention Likelihood", row["retention_pct"],                  C_BLUE,   "#F0F4FA"),
+    ci1,ci2,ci3,ci4 = st.columns(4)
+    impact_data = [
+        (ci1,"Engagement Uplift",f"+{safe_int(row,'engagement_uplift',0)}%",C_GREEN,"#F1F8F2"),
+        (ci2,"Healthier Basket",f"+{safe_int(row,'basket_health_shift',0)}%","#43A047","#F1F8F2"),
+        (ci3,"Sustainability Gain",f"+{safe_int(row,'sustainability_gain',0)}%","#66BB6A","#F1F8F2"),
+        (ci4,"Retention Likelihood",f"{safe_int(row,'retention_pct',0)}%",C_BLUE,"#EFF4FB"),
     ]
-    for col, label, val, col_color, bg in impact_cards:
+    for col,label,val,color,bg in impact_data:
         with col:
             st.markdown(
-                f'<div style="background:{bg};border-radius:10px;padding:18px;'
-                f'text-align:center;border-bottom:3px solid {col_color}">'
-                f'<div style="font-size:28px;font-weight:900;color:{col_color}">{val}</div>'
+                f'<div style="background:{bg};border-radius:10px;padding:18px;text-align:center;'
+                f'border-bottom:3px solid {color}">'
+                f'<div style="font-size:28px;font-weight:900;color:{color}">{val}</div>'
                 f'<div style="font-size:11px;color:#555;margin-top:5px">{label}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
+                f'</div>', unsafe_allow_html=True
             )
 
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-    st.plotly_chart(impact_chart(row), use_container_width=True, config={"displayModeBar": False})
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    st.plotly_chart(chart_impact(row), use_container_width=True, config={"displayModeBar":False})
 
-    st.markdown("""
-    <div style="text-align:center;font-size:11px;color:#ccc;
-                padding:20px 0 4px;border-top:1px solid #eee;margin-top:8px">
-      Catalina Shopper Intelligence · GreenBasket Demo ·
-      Synthetic data for presentation purposes only
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="text-align:center;font-size:11px;color:#ccc;padding:18px 0 4px;'
+        f'border-top:1px solid #eee;margin-top:6px">'
+        f'Catalina Shopper Intelligence · GreenBasket Demo · Synthetic data for presentation purposes only</div>',
+        unsafe_allow_html=True
+    )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 2 · SHOPPER VIEW
 # ═════════════════════════════════════════════════════════════════════════════
-with tab_shop:
+with tab2:
+    fname   = str(g(row,"name","Shopper")).split()[0]
+    tier    = str(g(row,"loyalty_tier","Bronze"))
+    tc_s    = TIER_COL.get(tier,"#777")
+    pts_s   = safe_int(row,"points_balance",0)
+    gap_s   = safe_int(row,"next_reward_gap",1)
+    total_s = pts_s + gap_s
+    prog_s  = int(pts_s / total_s * 100) if total_s > 0 else 0
+    streak_s= safe_int(row,"streak_weeks",0)
+    badges_s= [str(g(row,b,"")) for b in ["badge_1","badge_2","badge_3"]]
+    badges_s= [b for b in badges_s if b and b != "—"]
+    p_icon  = {"Health Pioneer":"🥦","Eco Explorer":"🌍","Family Organiser":"👨‍👩‍👧",
+               "Budget-Conscious":"💰","Routine Loyalist":"🔁","Weekend Foodie":"🍷",
+               "Eco-Progressive":"♻️","Convenience Seeker":"⚡"}.get(str(g(row,"persona","")), "👤")
 
-    # ── Derived values ────────────────────────────────────────────────────────
-    first_name = row["name"].split()[0]
-    tier       = row["loyalty_tier"]
-    tc_s       = TIER_COL.get(tier, "#777")
-    pts        = row["points_balance"]
-    total_pts_s = pts + row["points_to_next_reward"]
-    prog_s     = int(pts / total_pts_s * 100)
-    streak     = row["streak_weeks"]
-    badges_s   = [str(row.get(b, "")) for b in ["badge_health", "badge_eco", "badge_loyalty"]]
-    badges_s   = [b for b in badges_s if b not in ("", "nan")]
-    products   = PRODUCT_RECS.get(row["persona"], PRODUCT_RECS["Health Pioneer"])
-    validity   = VALIDITY_MAP.get(row["recommended_timing"], "Valid this week")
-    ch_icon_s  = CH_ICON.get(row["recommended_channel"], "📣")
+    # Products for this shopper
+    products_s = []
+    for i in [1,2,3,4]:
+        pname  = str(g(row,f"rec_p{i}_name","—"))
+        pbrand = str(g(row,f"rec_p{i}_brand","—"))
+        pprice = safe_float(row,f"rec_p{i}_price",2.99)
+        ppts   = safe_int(row,f"rec_p{i}_pts",20)
+        products_s.append((pname,pbrand,pprice,ppts))
 
-    meta_s  = PERSONA_META.get(row["persona"], {})
-    p_icon_s = meta_s.get("icon", "👤")
-    p_bg_s, p_col_s = {
-        "Health Pioneer":   ("#E8F5E9", C_GREEN),
-        "Eco Explorer":     ("#E0F2F1", "#00695C"),
-        "Family Organiser": ("#E3F2FD", "#1565C0"),
-        "Smart Saver":      ("#FFF8E1", "#E65100"),
-        "Routine Loyalist": ("#F3E5F5", "#6A1B9A"),
-        "Weekend Foodie":   ("#FFF3E0", "#BF360C"),
-        "Budget-Conscious": ("#FFF8E1", "#BF360C"),
-        "Eco-Progressive":  ("#E8F5E9", C_GREEN),
-    }.get(row["persona"], (C_LTBL, C_BLUE))
+    validity_map = {
+        "Saturday":"Valid this Saturday only","Sunday":"Valid this Sunday only",
+        "Weekend":"Valid this weekend","Friday":"Valid this Friday",
+        "Friday Evening":"Valid this Friday evening","Thursday":"Valid this Thursday",
+        "Wednesday":"Valid this Wednesday","Monday Morning":"Valid this Monday morning",
+    }
+    validity = validity_map.get(str(g(row,"activation_timing","—")), "Valid this week")
+    ch_s = str(g(row,"activation_channel","—"))
+    ch_icon_s = CH_ICON.get(ch_s,"📣")
 
-    # ── Build HTML fragments ──────────────────────────────────────────────────
-    prod_cards_html = ""
-    for p in products:
-        prod_cards_html += f"""
-        <div style="background:#fff;border-radius:14px;padding:16px 12px 14px;
-                    box-shadow:0 2px 10px rgba(0,0,0,.07);text-align:center;
-                    border-bottom:3px solid {C_GREEN}">
-          <div style="font-size:40px;margin-bottom:8px;line-height:1">{p['icon']}</div>
-          <div style="font-size:12px;font-weight:700;color:#222;margin-bottom:2px">{p['name']}</div>
-          <div style="font-size:10px;color:#aaa;margin-bottom:8px">{p['brand']}</div>
-          <span style="background:{C_LTBL};color:{C_BLUE};font-size:10px;font-weight:600;
-                       padding:3px 9px;border-radius:20px;display:inline-block">{p['tag']}</span>
-          <div style="margin-top:9px;font-size:12px;font-weight:800;color:{C_AMBER}">
-            +{p['pts']} pts
-          </div>
-        </div>"""
+    # Mission
+    mission_msg  = str(g(row,"activation_message","—"))
+    mission_type = str(g(row,"activation_offer_type","—"))
 
-    badge_chips_html = ""
+    # Badge chips HTML
+    badge_rows_html = ""
     for b in badges_s:
-        icon = BADGE_ICON.get(b, "🏅")
-        badge_chips_html += f"""
-        <div style="display:flex;align-items:center;gap:10px;background:#fff;
-                    border-radius:10px;padding:11px 14px;
-                    box-shadow:0 2px 6px rgba(0,0,0,.06)">
-          <span style="font-size:22px">{icon}</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#222">{b}</div>
-            <div style="font-size:10px;color:#aaa">Earned badge</div>
-          </div>
-        </div>"""
-    if not badge_chips_html:
-        badge_chips_html = (
-            '<div style="font-size:13px;color:#aaa;padding:8px 0">'
-            'Complete missions to earn your first badge</div>'
+        icon = BADGE_ICON.get(b,"🏅")
+        badge_rows_html += (
+            f'<div style="display:flex;align-items:center;gap:10px;background:#fff;'
+            f'border-radius:10px;padding:10px 14px;box-shadow:0 2px 6px rgba(0,0,0,.05)">'
+            f'<span style="font-size:22px">{icon}</span>'
+            f'<div><div style="font-size:13px;font-weight:700;color:#222">{b}</div>'
+            f'<div style="font-size:10px;color:#aaa">Earned badge</div></div>'
+            f'</div>'
+        )
+    if not badge_rows_html:
+        badge_rows_html = '<div style="font-size:13px;color:#aaa;padding:6px 0">Complete missions to earn your first badge</div>'
+
+    # Product cards HTML
+    prod_cards_html = ""
+    for pname, pbrand, pprice, ppts in products_s:
+        prod_cards_html += (
+            f'<div style="background:#fff;border-radius:14px;padding:14px 12px;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,.07);text-align:center;border-bottom:3px solid {C_GREEN}">'
+            f'<div style="font-size:11px;font-weight:700;color:#222;margin-bottom:3px">{pname}</div>'
+            f'<div style="font-size:10px;color:#aaa;margin-bottom:8px">{pbrand}</div>'
+            f'<div style="font-size:13px;font-weight:700;color:{C_BLUE};margin-bottom:4px">€{pprice:.2f}</div>'
+            f'<div style="font-size:12px;font-weight:800;color:{C_AMBER}">+{ppts} pts</div>'
+            f'</div>'
         )
 
-    # ── Centered mobile-style layout ──────────────────────────────────────────
-    _, col_center, _ = st.columns([1, 1.5, 1])
-
+    _, col_center, _ = st.columns([1,1.6,1])
     with col_center:
 
-        # 1 · App greeting header
+        # 1 · Greeting
         st.markdown(f"""
-        <div style="background:linear-gradient(135deg,{C_BLUE} 0%,#0066CC 100%);
-                    border-radius:16px;padding:26px 24px 22px;margin-bottom:14px;
-                    box-shadow:0 4px 18px rgba(0,74,151,.25)">
-          <div style="font-size:10px;color:#A8C8F0;letter-spacing:2px;
-                      text-transform:uppercase;margin-bottom:6px">GreenBasket Rewards</div>
+        <div style="background:linear-gradient(135deg,#003478 0%,#0058b8 100%);
+                    border-radius:16px;padding:24px 22px 20px;margin-bottom:14px;
+                    box-shadow:0 4px 18px rgba(0,52,120,.25)">
+          <div style="font-size:10px;color:#90BBE8;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">
+            GreenBasket Rewards
+          </div>
           <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:12px">
-            Hello, {first_name}! 👋
+            Hello, {fname}! 👋
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <div style="background:{tc_s};color:#fff;padding:5px 14px;border-radius:20px;
-                        font-size:12px;font-weight:700">⭐ {tier} Member</div>
+                        font-size:12px;font-weight:700">★ {tier} Member</div>
             <div style="background:rgba(255,255,255,.15);color:#fff;padding:5px 14px;
-                        border-radius:20px;font-size:12px">
-              {p_icon_s} {row['persona']}
-            </div>
+                        border-radius:20px;font-size:12px">{p_icon} {g(row,'persona')}</div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 2 · Points + streak + progress
+        # 2 · Points + streak
         st.markdown(f"""
-        <div style="background:#fff;border-radius:16px;padding:22px 22px 18px;
-                    margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.07)">
-          <div style="display:flex;justify-content:space-between;
-                      align-items:flex-start;margin-bottom:16px">
+        <div style="background:#fff;border-radius:16px;padding:20px 20px 16px;
+                    margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.07)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
             <div>
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1.2px;margin-bottom:4px">Your Points</div>
-              <div style="font-size:40px;font-weight:900;color:{C_BLUE};line-height:1">
-                {pts:,}
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">
+                Your Points
               </div>
-              <div style="font-size:11px;color:#aaa;margin-top:5px">
-                {row['points_to_next_reward']:,} pts to next reward
-              </div>
+              <div style="font-size:40px;font-weight:900;color:{C_BLUE};line-height:1">{pts_s:,}</div>
+              <div style="font-size:11px;color:#aaa;margin-top:4px">{gap_s:,} pts to next reward</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1.2px;margin-bottom:4px">Streak</div>
-              <div style="font-size:32px;font-weight:900;color:{C_AMBER}">🔥 {streak}w</div>
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px">
+                Streak
+              </div>
+              <div style="font-size:32px;font-weight:900;color:{C_AMBER}">🔥 {streak_s}w</div>
             </div>
           </div>
-          <div style="background:#EAECEF;border-radius:8px;height:10px;
-                      overflow:hidden;margin-bottom:6px">
-            <div style="width:{prog_s}%;height:10px;border-radius:8px;
+          <div style="background:#EAECEF;border-radius:7px;height:10px;overflow:hidden;margin-bottom:5px">
+            <div style="width:{prog_s}%;height:10px;border-radius:7px;
                         background:linear-gradient(90deg,{C_BLUE},{C_BLUE}bb)"></div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa">
@@ -968,35 +726,25 @@ with tab_shop:
         # 3 · Active mission
         st.markdown(f"""
         <div style="background:linear-gradient(135deg,{C_LTBL} 0%,#DEEEFF 100%);
-                    border:1.5px solid #B3D1F0;border-radius:16px;padding:20px 22px;
-                    margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;
-                      align-items:center;margin-bottom:12px">
-            <div style="font-size:11px;font-weight:700;color:{C_BLUE};
-                        text-transform:uppercase;letter-spacing:1px">🎯 Your Active Mission</div>
+                    border:1.5px solid #C5DCEF;border-radius:16px;padding:18px 20px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;color:{C_BLUE};text-transform:uppercase;letter-spacing:1px">
+              Your Active Mission
+            </div>
             <span style="background:{C_GREEN};color:#fff;font-size:10px;font-weight:700;
-                         padding:3px 11px;border-radius:20px">{row['recommended_offer_type']}</span>
+                         padding:3px 11px;border-radius:20px">{mission_type}</span>
           </div>
-          <div style="font-size:15px;font-weight:700;color:#1a1a2e;
-                      line-height:1.6;margin-bottom:16px">
-            {row['recommended_offer_text']}
+          <div style="font-size:15px;font-weight:700;color:#1a1a2e;line-height:1.6;margin-bottom:14px">
+            {mission_msg}
           </div>
           <div style="display:flex;gap:10px">
-            <div style="flex:1;background:rgba(255,255,255,.85);border-radius:10px;
-                        padding:11px 13px">
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:4px">Channel</div>
-              <div style="font-size:13px;font-weight:700;color:#333">
-                {ch_icon_s} {row['recommended_channel']}
-              </div>
+            <div style="flex:1;background:rgba(255,255,255,.85);border-radius:10px;padding:10px 12px">
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Channel</div>
+              <div style="font-size:13px;font-weight:700;color:#333">{ch_icon_s} {ch_s}</div>
             </div>
-            <div style="flex:1;background:rgba(255,255,255,.85);border-radius:10px;
-                        padding:11px 13px">
-              <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                          letter-spacing:1px;margin-bottom:4px">Valid</div>
-              <div style="font-size:13px;font-weight:700;color:{C_RED}">
-                ⏰ {validity}
-              </div>
+            <div style="flex:1;background:rgba(255,255,255,.85);border-radius:10px;padding:10px 12px">
+              <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Valid</div>
+              <div style="font-size:13px;font-weight:700;color:{C_RED}">⏰ {validity}</div>
             </div>
           </div>
         </div>
@@ -1004,30 +752,24 @@ with tab_shop:
 
         # 4 · Recommended products
         st.markdown(
-            f'<div style="font-size:11px;font-weight:700;color:{C_BLUE};'
-            f'text-transform:uppercase;letter-spacing:1.5px;margin:4px 0 12px;'
-            f'padding-bottom:7px;border-bottom:2px solid {C_LTBL}">'
-            f'Recommended For You</div>',
-            unsafe_allow_html=True,
+            f'<div style="font-size:11px;font-weight:700;color:{C_BLUE};text-transform:uppercase;'
+            f'letter-spacing:1.5px;margin:4px 0 10px;padding-bottom:6px;border-bottom:2px solid {C_LTBL}">'
+            f'Recommended For You</div>', unsafe_allow_html=True
         )
         st.markdown(
-            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;'
-            f'margin-bottom:20px">{prod_cards_html}</div>',
-            unsafe_allow_html=True,
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">'
+            f'{prod_cards_html}</div>', unsafe_allow_html=True
         )
 
         # 5 · Badges
         st.markdown(
-            f'<div style="font-size:11px;font-weight:700;color:{C_BLUE};'
-            f'text-transform:uppercase;letter-spacing:1.5px;margin:4px 0 12px;'
-            f'padding-bottom:7px;border-bottom:2px solid {C_LTBL}">'
-            f'Your Badges</div>',
-            unsafe_allow_html=True,
+            f'<div style="font-size:11px;font-weight:700;color:{C_BLUE};text-transform:uppercase;'
+            f'letter-spacing:1.5px;margin:4px 0 10px;padding-bottom:6px;border-bottom:2px solid {C_LTBL}">'
+            f'Your Badges</div>', unsafe_allow_html=True
         )
         st.markdown(
-            f'<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:22px">'
-            f'{badge_chips_html}</div>',
-            unsafe_allow_html=True,
+            f'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+            f'{badge_rows_html}</div>', unsafe_allow_html=True
         )
 
         # 6 · CTA
@@ -1035,12 +777,8 @@ with tab_shop:
         <div style="background:linear-gradient(135deg,{C_RED} 0%,#E53935 100%);
                     border-radius:14px;padding:20px;text-align:center;
                     box-shadow:0 4px 16px rgba(204,0,0,.28);margin-bottom:10px">
-          <div style="font-size:17px;font-weight:900;color:#fff;letter-spacing:.4px">
-            Activate Offer
-          </div>
-          <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:5px">
-            Tap to unlock your personalised deal
-          </div>
+          <div style="font-size:17px;font-weight:900;color:#fff;letter-spacing:.4px">Activate Offer</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px">Tap to unlock your personalised deal</div>
         </div>
         <div style="text-align:center;font-size:10px;color:#ccc;padding:10px 0 4px">
           GreenBasket · Powered by Catalina
@@ -1049,270 +787,291 @@ with tab_shop:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TAB 3 · CHECKOUT EXPERIENCE
+# TAB 3 · CHECKOUT JOURNEY
 # ═════════════════════════════════════════════════════════════════════════════
-with tab_sim:
+with tab3:
 
-    co_id = row["shopper_id"]
-    if st.session_state.get("co_shopper_id") != co_id:
-        st.session_state.co_shopper_id = co_id
-        st.session_state.co_step       = 0
+    # Reset step when shopper changes
+    co_id = str(g(row,"shopper_id",""))
+    if st.session_state.get("_co_id") != co_id:
+        st.session_state["_co_id"]   = co_id
+        st.session_state["_co_step"] = 0
 
-    step     = st.session_state.get("co_step", 0)
-    products = PRODUCT_RECS.get(row["persona"], PRODUCT_RECS["Health Pioneer"])
+    step = st.session_state.get("_co_step", 0)
 
-    prices        = BASKET_PRICES.get(row["persona"], [2.99, 2.49, 3.29, 1.99])
-    mech          = OFFER_MECHANICS.get(row["recommended_offer_type"],
-                        {"discount_pct": 0, "discount_eur": 0, "bonus_pts": 0,
-                         "pts_mult": 1, "label": "GreenBasket Offer"})
-    subtotal      = round(sum(prices), 2)
-    discount_amt  = round(subtotal * mech["discount_pct"] / 100 + mech["discount_eur"], 2)
-    discount_amt  = min(discount_amt, subtotal)
-    final_total   = round(subtotal - discount_amt, 2)
-    basket_pts    = int(final_total) * mech["pts_mult"]
-    bonus_pts_co  = mech["bonus_pts"]
-    total_new_pts = basket_pts + bonus_pts_co
-    new_balance   = row["points_balance"] + total_new_pts
+    # Products & offer mechanics
+    co_products = []
+    for i in [1,2,3,4]:
+        co_products.append({
+            "name":  str(g(row,f"rec_p{i}_name","Product")),
+            "brand": str(g(row,f"rec_p{i}_brand","Brand")),
+            "price": safe_float(row,f"rec_p{i}_price",2.99),
+            "pts":   safe_int(row,f"rec_p{i}_pts",20),
+        })
 
-    first_name_co = row["name"].split()[0]
-    badges_co     = [str(row.get(b, "")) for b in ["badge_health", "badge_eco", "badge_loyalty"]]
-    badges_co     = [b for b in badges_co if b not in ("", "nan")]
-    badge_name_co = badges_co[0] if badges_co else "GreenBasket Champion"
-    badge_icon_co = BADGE_ICON.get(badge_name_co, "🏅")
+    subtotal     = round(sum(p["price"] for p in co_products), 2)
+    disc_pct     = safe_float(row,"offer_discount_pct",0)
+    disc_eur     = safe_float(row,"offer_discount_eur",0)
+    bonus_pts_co = safe_int(row,"offer_bonus_pts",0)
+    offer_label  = str(g(row,"offer_mechanic","GreenBasket Offer"))
+    discount_amt = round(min(subtotal * disc_pct / 100 + disc_eur, subtotal), 2)
+    final_total  = round(subtotal - discount_amt, 2)
+    basket_pts   = int(final_total)
+    new_balance  = safe_int(row,"points_balance",0) + basket_pts + bonus_pts_co
+    fname_co     = str(g(row,"name","Shopper")).split()[0]
 
-    _, col_co, _ = st.columns([0.6, 2, 0.6])
+    # Offer description line
+    if disc_pct > 0:
+        offer_desc = f"{disc_pct:.0f}% discount applied"
+    elif disc_eur > 0:
+        offer_desc = f"€{disc_eur:.2f} voucher applied"
+    elif bonus_pts_co > 0:
+        offer_desc = f"+{bonus_pts_co:,} bonus points added"
+    else:
+        offer_desc = "Loyalty bonus applied"
+
+    # ── Step indicator ────────────────────────────────────────────────────────
+    step_labels = ["Basket", "Checkout", "Offer Applied", "Confirmed"]
+    parts = []
+    for i, lbl in enumerate(step_labels):
+        if i < step:
+            bg, tc = C_GREEN, "#fff"
+        elif i == step:
+            bg, tc = C_BLUE, "#fff"
+        else:
+            bg, tc = "#EAECEF", "#999"
+        parts.append(
+            f'<div style="flex:1;padding:10px 6px;text-align:center;background:{bg};'
+            f'font-size:11px;font-weight:700;color:{tc};letter-spacing:.3px">{lbl}</div>'
+        )
+    st.markdown(
+        '<div style="display:flex;border-radius:10px;overflow:hidden;margin-bottom:20px">'
+        + "".join(parts) + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    _, col_co, _ = st.columns([0.5, 2, 0.5])
 
     with col_co:
 
-        # ── Step progress bar ─────────────────────────────────────────────────
-        step_labels = ["Basket", "Checkout", "Offer Applied", "Confirmed"]
-        step_html   = '<div style="display:flex;margin-bottom:20px;border-radius:10px;overflow:hidden">'
-        for i, lbl in enumerate(step_labels):
-            if i < step:
-                bg, tc = C_GREEN, "#fff"
-            elif i == step:
-                bg, tc = C_BLUE,  "#fff"
-            else:
-                bg, tc = "#EAECEF", "#aaa"
-            step_html += (
-                f'<div style="flex:1;padding:9px 4px;text-align:center;background:{bg};'
-                f'font-size:10px;font-weight:700;color:{tc};letter-spacing:.3px">{lbl}</div>'
-            )
-        step_html += "</div>"
-        st.markdown(step_html, unsafe_allow_html=True)
-
-        # ── STEP 0: Basket Review ─────────────────────────────────────────────
+        # ── STEP 0 · Basket ───────────────────────────────────────────────────
         if step == 0:
+
+            # Basket title
             st.markdown(f"""
-            <div style="text-align:center;margin-bottom:18px">
-              <div style="font-size:22px;font-weight:900;color:{C_BLUE}">
-                {first_name_co}'s Basket
-              </div>
-              <div style="font-size:12px;color:#aaa;margin-top:4px">
-                {len(products)} items · Est. €{subtotal:.2f}
+            <div style="text-align:center;margin-bottom:16px">
+              <div style="font-size:22px;font-weight:900;color:{C_BLUE}">{fname_co}'s Basket</div>
+              <div style="font-size:12px;color:#aaa;margin-top:3px">
+                {len(co_products)} items · Est. €{subtotal:.2f}
               </div>
             </div>
             """, unsafe_allow_html=True)
 
-            col1, col2 = st.columns(2)
-            for i, (p, price) in enumerate(zip(products, prices)):
-                with (col1 if i % 2 == 0 else col2):
+            # Item cards
+            c_a, c_b = st.columns(2)
+            for idx, p in enumerate(co_products):
+                col = c_a if idx % 2 == 0 else c_b
+                with col:
                     st.markdown(f"""
-                    <div style="background:#fff;border-radius:13px;padding:14px;
-                                box-shadow:0 2px 10px rgba(0,0,0,.07);
-                                border-bottom:3px solid {C_BLUE};margin-bottom:12px;
-                                display:flex;align-items:center;gap:12px">
-                      <span style="font-size:30px">{p['icon']}</span>
+                    <div style="background:#fff;border-radius:12px;padding:13px;
+                                box-shadow:0 2px 8px rgba(0,0,0,.07);
+                                border-bottom:3px solid {C_BLUE};margin-bottom:10px;
+                                display:flex;align-items:center;gap:10px">
                       <div style="flex:1;min-width:0">
-                        <div style="font-size:12px;font-weight:700;color:#222;
-                                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                          {p['name']}
-                        </div>
+                        <div style="font-size:12px;font-weight:700;color:#222">{p['name']}</div>
                         <div style="font-size:10px;color:#aaa">{p['brand']}</div>
-                        <div style="font-size:11px;font-weight:600;color:{C_AMBER};margin-top:2px">
-                          +{p['pts']} pts
-                        </div>
+                        <div style="font-size:11px;font-weight:600;color:{C_AMBER};margin-top:2px">+{p['pts']} pts</div>
                       </div>
-                      <div style="font-size:15px;font-weight:900;color:{C_BLUE};flex-shrink:0">
-                        €{price:.2f}
-                      </div>
+                      <div style="font-size:15px;font-weight:900;color:{C_BLUE};flex-shrink:0">€{p['price']:.2f}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
+            # Offer ready banner
             st.markdown(f"""
             <div style="background:linear-gradient(135deg,{C_LTBL},#DEEEFF);
-                        border:1.5px solid #B3D1F0;border-radius:12px;
-                        padding:14px 18px;margin-bottom:16px">
-              <div style="font-size:10px;color:{C_BLUE};font-weight:700;
-                          text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">
-                🌿 GreenBasket Offer Ready
-              </div>
-              <div style="font-size:13px;font-weight:700;color:#222">{mech['label']}</div>
-              <div style="font-size:11px;color:#aaa;margin-top:3px">
-                Applied automatically at checkout
-              </div>
+                        border:1.5px solid #C5DCEF;border-radius:12px;
+                        padding:13px 16px;margin-bottom:16px">
+              <div style="font-size:10px;color:{C_BLUE};font-weight:700;text-transform:uppercase;
+                          letter-spacing:1px;margin-bottom:4px">🌿 GreenBasket Offer Ready</div>
+              <div style="font-size:13px;font-weight:700;color:#222">{offer_label}</div>
+              <div style="font-size:11px;color:#aaa;margin-top:2px">Applied automatically at checkout</div>
             </div>
             """, unsafe_allow_html=True)
 
-            if st.button("Proceed to Checkout →", use_container_width=True, key="co_step0"):
-                st.session_state.co_step = 1
+            if st.button("Proceed to Checkout →", use_container_width=True, key="btn_s0"):
+                st.session_state["_co_step"] = 1
                 st.rerun()
 
-        # ── STEPS 1 & 2: Receipt ─────────────────────────────────────────────
-        elif step in (1, 2):
+        # ── STEP 1 · Checkout ─────────────────────────────────────────────────
+        elif step == 1:
+
             items_html = ""
-            for p, price in zip(products, prices):
-                items_html += f"""
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:10px 0;border-bottom:1px solid #F5F5F5">
-                  <div style="display:flex;align-items:center;gap:10px">
-                    <span style="font-size:22px">{p['icon']}</span>
-                    <div>
-                      <div style="font-size:13px;color:#333;font-weight:500">{p['name']}</div>
-                      <div style="font-size:10px;color:#aaa">{p['brand']}</div>
-                    </div>
-                  </div>
-                  <span style="font-size:13px;font-weight:600;color:#444">€{price:.2f}</span>
-                </div>"""
+            for p in co_products:
+                items_html += (
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:9px 0;border-bottom:1px solid #F0F0F0">'
+                    f'<div>'
+                    f'<div style="font-size:13px;color:#333;font-weight:500">{p["name"]}</div>'
+                    f'<div style="font-size:10px;color:#aaa">{p["brand"]}</div>'
+                    f'</div>'
+                    f'<span style="font-size:13px;font-weight:600;color:#444">€{p["price"]:.2f}</span>'
+                    f'</div>'
+                )
 
-            if step == 1:
-                offer_section = f"""
-                <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;
-                            background:#FFF8E1;border-radius:8px;margin:10px 0;
-                            border:1.5px dashed {C_AMBER}">
-                  <span style="font-size:18px">🌿</span>
-                  <div>
-                    <div style="font-size:11px;font-weight:700;color:#E65100">
-                      GreenBasket Offer Pending
-                    </div>
-                    <div style="font-size:10px;color:#aaa">Tap below to apply your reward</div>
-                  </div>
-                </div>"""
-                total_col    = "#888"
-                total_amount = f"€{subtotal:.2f}"
-                btn_label    = "Apply GreenBasket Offer 🌿"
-                next_step    = 2
-            else:
-                if discount_amt > 0:
-                    saving_line = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">−€{discount_amt:.2f}</span>'
-                else:
-                    saving_line = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">✓ Applied</span>'
-                offer_section = f"""
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:11px 14px;background:#E8F5E9;border-radius:8px;
-                            margin:10px 0;border-left:4px solid {C_GREEN}">
-                  <div>
-                    <div style="font-size:10px;color:{C_GREEN};font-weight:700;
-                                text-transform:uppercase;letter-spacing:1px">
-                      🌿 GreenBasket Offer Applied
-                    </div>
-                    <div style="font-size:12px;color:#2E7D32;margin-top:2px">{mech['label']}</div>
-                  </div>
-                  {saving_line}
-                </div>"""
-                total_col    = C_BLUE
-                total_amount = f"€{final_total:.2f}"
-                btn_label    = "Confirm Payment →"
-                next_step    = 3
+            offer_pending = (
+                f'<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;'
+                f'background:#FFF8E1;border-radius:8px;margin:10px 0;border:1.5px dashed {C_AMBER}">'
+                f'<span style="font-size:18px">🌿</span>'
+                f'<div>'
+                f'<div style="font-size:11px;font-weight:700;color:#E65100">GreenBasket Offer Pending</div>'
+                f'<div style="font-size:10px;color:#aaa">Tap below to apply your reward</div>'
+                f'</div></div>'
+            )
 
-            st.markdown(f"""
-            <div style="background:#fff;border-radius:16px;overflow:hidden;
-                        box-shadow:0 4px 24px rgba(0,0,0,.1);margin-bottom:16px">
-              <div style="background:linear-gradient(135deg,{C_BLUE} 0%,#0066CC 100%);
-                          padding:18px 24px;display:flex;justify-content:space-between;
-                          align-items:center">
-                <div>
-                  <div style="font-size:10px;color:#A8C8F0;letter-spacing:2px;
-                              text-transform:uppercase;margin-bottom:3px">Carrefour Market</div>
-                  <div style="font-size:17px;font-weight:800;color:#fff">
-                    🛒 GreenBasket Checkout
-                  </div>
-                </div>
-                <div style="background:rgba(255,255,255,.18);border-radius:10px;
-                            padding:8px 16px;text-align:center">
-                  <div style="font-size:10px;color:#A8C8F0;margin-bottom:2px">Shopper</div>
-                  <div style="font-size:13px;font-weight:800;color:#fff">{first_name_co}</div>
-                </div>
-              </div>
-              <div style="padding:20px 24px">
-                {items_html}
-                <div style="display:flex;justify-content:space-between;
-                            padding:11px 0 6px;border-top:2px solid #eee;margin-top:4px">
-                  <span style="font-size:13px;color:#888">Subtotal</span>
-                  <span style="font-size:13px;font-weight:600;color:#555">€{subtotal:.2f}</span>
-                </div>
-                {offer_section}
-                <div style="display:flex;justify-content:space-between;
-                            padding:13px 0 4px;border-top:3px solid {total_col};margin-top:6px">
-                  <span style="font-size:16px;font-weight:900;color:{total_col}">TOTAL</span>
-                  <span style="font-size:16px;font-weight:900;color:{total_col}">{total_amount}</span>
-                </div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            receipt_html = (
+                f'<div style="background:#fff;border-radius:16px;overflow:hidden;'
+                f'box-shadow:0 4px 20px rgba(0,0,0,.10);margin-bottom:16px">'
+                f'<div style="background:linear-gradient(135deg,{C_BLUE} 0%,#0059b3 100%);'
+                f'padding:16px 22px;display:flex;justify-content:space-between;align-items:center">'
+                f'<div>'
+                f'<div style="font-size:10px;color:#90BBE8;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px">Carrefour Market</div>'
+                f'<div style="font-size:16px;font-weight:800;color:#fff">🛒 GreenBasket Checkout</div>'
+                f'</div>'
+                f'<div style="background:rgba(255,255,255,.18);border-radius:9px;padding:7px 14px;text-align:center">'
+                f'<div style="font-size:10px;color:#90BBE8;margin-bottom:2px">Shopper</div>'
+                f'<div style="font-size:13px;font-weight:800;color:#fff">{fname_co}</div>'
+                f'</div></div>'
+                f'<div style="padding:18px 22px">'
+                f'{items_html}'
+                f'<div style="display:flex;justify-content:space-between;padding:10px 0 4px;'
+                f'border-top:2px solid #eee;margin-top:4px">'
+                f'<span style="font-size:13px;color:#888">Subtotal</span>'
+                f'<span style="font-size:13px;font-weight:600;color:#555">€{subtotal:.2f}</span>'
+                f'</div>'
+                f'{offer_pending}'
+                f'<div style="display:flex;justify-content:space-between;padding:12px 0 4px;'
+                f'border-top:3px solid #888;margin-top:6px">'
+                f'<span style="font-size:16px;font-weight:900;color:#888">TOTAL</span>'
+                f'<span style="font-size:16px;font-weight:900;color:#888">€{subtotal:.2f}</span>'
+                f'</div></div></div>'
+            )
+            st.markdown(receipt_html, unsafe_allow_html=True)
 
-            if st.button(btn_label, use_container_width=True, key=f"co_step{step}"):
-                st.session_state.co_step = next_step
+            if st.button("Apply GreenBasket Offer 🌿", use_container_width=True, key="btn_s1"):
+                st.session_state["_co_step"] = 2
                 st.rerun()
 
-        # ── STEP 3: Payment Confirmed ─────────────────────────────────────────
+        # ── STEP 2 · Offer Applied ────────────────────────────────────────────
+        elif step == 2:
+
+            items_html = ""
+            for p in co_products:
+                items_html += (
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:9px 0;border-bottom:1px solid #F0F0F0">'
+                    f'<div>'
+                    f'<div style="font-size:13px;color:#333;font-weight:500">{p["name"]}</div>'
+                    f'<div style="font-size:10px;color:#aaa">{p["brand"]}</div>'
+                    f'</div>'
+                    f'<span style="font-size:13px;font-weight:600;color:#444">€{p["price"]:.2f}</span>'
+                    f'</div>'
+                )
+
+            if discount_amt > 0:
+                saving_html = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">−€{discount_amt:.2f}</span>'
+            else:
+                saving_html = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">✓ Applied</span>'
+
+            offer_applied = (
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'padding:11px 14px;background:#E8F5E9;border-radius:8px;margin:10px 0;border-left:4px solid {C_GREEN}">'
+                f'<div>'
+                f'<div style="font-size:10px;color:{C_GREEN};font-weight:700;text-transform:uppercase;letter-spacing:1px">'
+                f'🌿 GreenBasket Offer Applied</div>'
+                f'<div style="font-size:12px;color:#2E7D32;margin-top:2px">{offer_desc}</div>'
+                f'</div>'
+                f'{saving_html}</div>'
+            )
+
+            receipt_html = (
+                f'<div style="background:#fff;border-radius:16px;overflow:hidden;'
+                f'box-shadow:0 4px 20px rgba(0,0,0,.10);margin-bottom:16px">'
+                f'<div style="background:linear-gradient(135deg,{C_BLUE} 0%,#0059b3 100%);'
+                f'padding:16px 22px;display:flex;justify-content:space-between;align-items:center">'
+                f'<div>'
+                f'<div style="font-size:10px;color:#90BBE8;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px">Carrefour Market</div>'
+                f'<div style="font-size:16px;font-weight:800;color:#fff">🛒 GreenBasket Checkout</div>'
+                f'</div>'
+                f'<div style="background:rgba(255,255,255,.18);border-radius:9px;padding:7px 14px;text-align:center">'
+                f'<div style="font-size:10px;color:#90BBE8;margin-bottom:2px">Shopper</div>'
+                f'<div style="font-size:13px;font-weight:800;color:#fff">{fname_co}</div>'
+                f'</div></div>'
+                f'<div style="padding:18px 22px">'
+                f'{items_html}'
+                f'<div style="display:flex;justify-content:space-between;padding:10px 0 4px;'
+                f'border-top:2px solid #eee;margin-top:4px">'
+                f'<span style="font-size:13px;color:#888">Subtotal</span>'
+                f'<span style="font-size:13px;font-weight:600;color:#555">€{subtotal:.2f}</span>'
+                f'</div>'
+                f'{offer_applied}'
+                f'<div style="display:flex;justify-content:space-between;padding:12px 0 4px;'
+                f'border-top:3px solid {C_BLUE};margin-top:6px">'
+                f'<span style="font-size:16px;font-weight:900;color:{C_BLUE}">TOTAL</span>'
+                f'<span style="font-size:16px;font-weight:900;color:{C_BLUE}">€{final_total:.2f}</span>'
+                f'</div></div></div>'
+            )
+            st.markdown(receipt_html, unsafe_allow_html=True)
+
+            if st.button("Confirm Payment →", use_container_width=True, key="btn_s2"):
+                st.session_state["_co_step"] = 3
+                st.rerun()
+
+        # ── STEP 3 · Confirmed ────────────────────────────────────────────────
         elif step >= 3:
             st.balloons()
 
-            st.markdown(f"""
-            <div style="background:linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%);
-                        border:2px solid {C_GREEN};border-radius:16px;
-                        padding:28px 24px 24px;text-align:center;
-                        box-shadow:0 4px 18px rgba(46,125,50,.2);margin-bottom:14px">
-              <div style="font-size:48px;margin-bottom:10px">✅</div>
-              <div style="font-size:11px;color:{C_GREEN};font-weight:700;
-                          text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">
-                Payment Confirmed
-              </div>
-              <div style="font-size:28px;font-weight:900;color:#1B5E20;margin-bottom:4px">
-                €{final_total:.2f} paid
-              </div>
-              <div style="font-size:13px;color:#388E3C;margin-bottom:20px">
-                {mech['label']}
-              </div>
-              <div style="background:rgba(255,255,255,.75);border-radius:12px;
-                          padding:16px 18px;display:flex;gap:0">
-                <div style="flex:1;text-align:center;padding:0 8px">
-                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                              letter-spacing:1px;margin-bottom:5px">Basket Points</div>
-                  <div style="font-size:26px;font-weight:900;color:{C_BLUE}">+{basket_pts}</div>
-                </div>
-                <div style="width:1px;background:#ddd;margin:0 4px"></div>
-                <div style="flex:1;text-align:center;padding:0 8px">
-                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                              letter-spacing:1px;margin-bottom:5px">Bonus Points</div>
-                  <div style="font-size:26px;font-weight:900;color:{C_GREEN}">+{bonus_pts_co}</div>
-                </div>
-                <div style="width:1px;background:#ddd;margin:0 4px"></div>
-                <div style="flex:1;text-align:center;padding:0 8px">
-                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
-                              letter-spacing:1px;margin-bottom:5px">New Balance</div>
-                  <div style="font-size:26px;font-weight:900;color:{C_AMBER}">{new_balance:,}</div>
-                </div>
-              </div>
-            </div>
-            <div style="background:#fff;border-radius:14px;padding:20px 22px;
-                        box-shadow:0 2px 12px rgba(0,0,0,.07);text-align:center;
-                        border-top:4px solid {C_AMBER};margin-bottom:16px">
-              <div style="font-size:38px;margin-bottom:8px">{badge_icon_co}</div>
-              <div style="font-size:10px;color:{C_AMBER};font-weight:700;
-                          text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px">
-                Badge Progress
-              </div>
-              <div style="font-size:16px;font-weight:800;color:#333">{badge_name_co}</div>
-              <div style="font-size:12px;color:#aaa;margin-top:4px">
-                Keep shopping to unlock your next reward
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            badge_name = badges_s[0] if badges_s else "GreenBasket Member"
+            badge_icon = BADGE_ICON.get(badge_name, "🏅")
 
-        # ── Reset ─────────────────────────────────────────────────────────────
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        if st.button("↺  Start Over", use_container_width=True, key="co_reset"):
-            st.session_state.co_step = 0
-            st.rerun()
+            confirmed_html = (
+                f'<div style="background:linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%);'
+                f'border:2px solid {C_GREEN};border-radius:16px;padding:26px 22px 22px;'
+                f'text-align:center;box-shadow:0 4px 18px rgba(46,125,50,.18);margin-bottom:14px">'
+                f'<div style="font-size:46px;margin-bottom:10px">✅</div>'
+                f'<div style="font-size:10px;color:{C_GREEN};font-weight:700;text-transform:uppercase;'
+                f'letter-spacing:2px;margin-bottom:6px">Payment Confirmed</div>'
+                f'<div style="font-size:28px;font-weight:900;color:#1B5E20;margin-bottom:4px">€{final_total:.2f} paid</div>'
+                f'<div style="font-size:13px;color:#388E3C;margin-bottom:20px">{offer_desc}</div>'
+                f'<div style="background:rgba(255,255,255,.75);border-radius:12px;padding:16px 18px;display:flex">'
+                f'<div style="flex:1;text-align:center;padding:0 8px">'
+                f'<div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Basket Points</div>'
+                f'<div style="font-size:26px;font-weight:900;color:{C_BLUE}">+{basket_pts}</div>'
+                f'</div>'
+                f'<div style="width:1px;background:#ddd;margin:0 4px"></div>'
+                f'<div style="flex:1;text-align:center;padding:0 8px">'
+                f'<div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Bonus Points</div>'
+                f'<div style="font-size:26px;font-weight:900;color:{C_GREEN}">+{bonus_pts_co}</div>'
+                f'</div>'
+                f'<div style="width:1px;background:#ddd;margin:0 4px"></div>'
+                f'<div style="flex:1;text-align:center;padding:0 8px">'
+                f'<div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">New Balance</div>'
+                f'<div style="font-size:26px;font-weight:900;color:{C_AMBER}">{new_balance:,}</div>'
+                f'</div></div></div>'
+                f'<div style="background:#fff;border-radius:14px;padding:18px 20px;'
+                f'box-shadow:0 2px 10px rgba(0,0,0,.07);text-align:center;'
+                f'border-top:4px solid {C_AMBER};margin-bottom:16px">'
+                f'<div style="font-size:36px;margin-bottom:8px">{badge_icon}</div>'
+                f'<div style="font-size:10px;color:{C_AMBER};font-weight:700;text-transform:uppercase;'
+                f'letter-spacing:1.5px;margin-bottom:5px">Badge Progress</div>'
+                f'<div style="font-size:16px;font-weight:800;color:#333">{badge_name}</div>'
+                f'<div style="font-size:12px;color:#aaa;margin-top:4px">Keep shopping to unlock your next reward</div>'
+                f'</div>'
+            )
+            st.markdown(confirmed_html, unsafe_allow_html=True)
+
+        # ── Reset button (always shown below step >= 1) ───────────────────────
+        if step > 0:
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            if st.button("↺  Start Over", use_container_width=True, key="btn_reset"):
+                st.session_state["_co_step"] = 0
+                st.rerun()
