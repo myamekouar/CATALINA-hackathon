@@ -155,6 +155,34 @@ PRODUCT_RECS = {
     ],
 }
 
+BASKET_PRICES = {
+    "Health Pioneer":   [2.49, 1.89, 3.29, 2.99],
+    "Eco Explorer":     [1.99, 3.49, 5.99, 4.29],
+    "Family Organiser": [4.99, 3.49, 5.29, 2.99],
+    "Smart Saver":      [0.79, 0.59, 2.49, 1.29],
+    "Routine Loyalist": [3.99, 8.99, 0.99, 2.29],
+    "Weekend Foodie":   [8.99, 12.99, 9.49, 16.99],
+    "Budget-Conscious": [1.49, 1.99, 0.99, 1.79],
+    "Eco-Progressive":  [1.99, 2.49, 3.99, 5.29],
+}
+
+OFFER_MECHANICS = {
+    "Double Points on Organic": {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 2, "label": "2× Points on Organic & Fresh"},
+    "Eco Challenge":            {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 500, "pts_mult": 1, "label": "+500 Eco Challenge Points"},
+    "Family Bundle Promo":      {"discount_pct": 20, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "20% Family Bundle Discount"},
+    "Reactivation Offer":       {"discount_pct": 0,  "discount_eur": 5,  "bonus_pts": 0,   "pts_mult": 1, "label": "€5.00 Welcome Back Voucher"},
+    "Sustainable Swap":         {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 300, "pts_mult": 1, "label": "+300 Green Swap Points"},
+    "Wellness Mission":         {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 600, "pts_mult": 1, "label": "+600 Vitality Challenge Points"},
+    "Price-Driven Bundle":      {"discount_pct": 33, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "Buy 2 Get 1 Free (33% off)"},
+    "Premium Weekend Deal":     {"discount_pct": 30, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "30% Weekend Premium Deal"},
+    "Loyalty Bonus":            {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 2, "label": "Double Points — Loyalty Bonus"},
+    "Discovery Offer":          {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 200, "pts_mult": 1, "label": "+200 Discovery Points per Item"},
+    "Seasonal Challenge":       {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 800, "pts_mult": 1, "label": "+800 Spring Challenge Points"},
+    "Reactivation Bundle":      {"discount_pct": 33, "discount_eur": 0,  "bonus_pts": 0,   "pts_mult": 1, "label": "3-for-2 Deal (33% off)"},
+    "Family Mega Bundle":       {"discount_pct": 0,  "discount_eur": 15, "bonus_pts": 0,   "pts_mult": 1, "label": "€15.00 Mega Bundle Saving"},
+    "Eco Bundle Challenge":     {"discount_pct": 0,  "discount_eur": 0,  "bonus_pts": 500, "pts_mult": 1, "label": "+500 Eco Bundle Points"},
+}
+
 VALIDITY_MAP = {
     "Weekend": "Valid this weekend only",
     "Saturday": "Valid this Saturday only",
@@ -442,7 +470,9 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── TABS ──────────────────────────────────────────────────────────────────────
-tab_biz, tab_shop = st.tabs(["  Business View  ", "  Shopper View  "])
+tab_biz, tab_shop, tab_sim = st.tabs(
+    ["  Business View  ", "  Shopper View  ", "  Checkout Experience  "]
+)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 · BUSINESS VIEW
@@ -1016,3 +1046,273 @@ with tab_shop:
           GreenBasket · Powered by Catalina
         </div>
         """, unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TAB 3 · CHECKOUT EXPERIENCE
+# ═════════════════════════════════════════════════════════════════════════════
+with tab_sim:
+
+    co_id = row["shopper_id"]
+    if st.session_state.get("co_shopper_id") != co_id:
+        st.session_state.co_shopper_id = co_id
+        st.session_state.co_step       = 0
+
+    step     = st.session_state.get("co_step", 0)
+    products = PRODUCT_RECS.get(row["persona"], PRODUCT_RECS["Health Pioneer"])
+
+    prices        = BASKET_PRICES.get(row["persona"], [2.99, 2.49, 3.29, 1.99])
+    mech          = OFFER_MECHANICS.get(row["recommended_offer_type"],
+                        {"discount_pct": 0, "discount_eur": 0, "bonus_pts": 0,
+                         "pts_mult": 1, "label": "GreenBasket Offer"})
+    subtotal      = round(sum(prices), 2)
+    discount_amt  = round(subtotal * mech["discount_pct"] / 100 + mech["discount_eur"], 2)
+    discount_amt  = min(discount_amt, subtotal)
+    final_total   = round(subtotal - discount_amt, 2)
+    basket_pts    = int(final_total) * mech["pts_mult"]
+    bonus_pts_co  = mech["bonus_pts"]
+    total_new_pts = basket_pts + bonus_pts_co
+    new_balance   = row["points_balance"] + total_new_pts
+
+    first_name_co = row["name"].split()[0]
+    badges_co     = [str(row.get(b, "")) for b in ["badge_health", "badge_eco", "badge_loyalty"]]
+    badges_co     = [b for b in badges_co if b not in ("", "nan")]
+    badge_name_co = badges_co[0] if badges_co else "GreenBasket Champion"
+    badge_icon_co = BADGE_ICON.get(badge_name_co, "🏅")
+
+    _, col_co, _ = st.columns([0.6, 2, 0.6])
+
+    with col_co:
+
+        # ── Step progress bar ─────────────────────────────────────────────────
+        step_labels = ["Basket", "Checkout", "Offer Applied", "Confirmed"]
+        step_html   = '<div style="display:flex;margin-bottom:20px;border-radius:10px;overflow:hidden">'
+        for i, lbl in enumerate(step_labels):
+            if i < step:
+                bg, tc = C_GREEN, "#fff"
+            elif i == step:
+                bg, tc = C_BLUE,  "#fff"
+            else:
+                bg, tc = "#EAECEF", "#aaa"
+            step_html += (
+                f'<div style="flex:1;padding:9px 4px;text-align:center;background:{bg};'
+                f'font-size:10px;font-weight:700;color:{tc};letter-spacing:.3px">{lbl}</div>'
+            )
+        step_html += "</div>"
+        st.markdown(step_html, unsafe_allow_html=True)
+
+        # ── STEP 0: Basket Review ─────────────────────────────────────────────
+        if step == 0:
+            st.markdown(f"""
+            <div style="text-align:center;margin-bottom:18px">
+              <div style="font-size:22px;font-weight:900;color:{C_BLUE}">
+                {first_name_co}'s Basket
+              </div>
+              <div style="font-size:12px;color:#aaa;margin-top:4px">
+                {len(products)} items · Est. €{subtotal:.2f}
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            col1, col2 = st.columns(2)
+            for i, (p, price) in enumerate(zip(products, prices)):
+                with (col1 if i % 2 == 0 else col2):
+                    st.markdown(f"""
+                    <div style="background:#fff;border-radius:13px;padding:14px;
+                                box-shadow:0 2px 10px rgba(0,0,0,.07);
+                                border-bottom:3px solid {C_BLUE};margin-bottom:12px;
+                                display:flex;align-items:center;gap:12px">
+                      <span style="font-size:30px">{p['icon']}</span>
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:12px;font-weight:700;color:#222;
+                                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                          {p['name']}
+                        </div>
+                        <div style="font-size:10px;color:#aaa">{p['brand']}</div>
+                        <div style="font-size:11px;font-weight:600;color:{C_AMBER};margin-top:2px">
+                          +{p['pts']} pts
+                        </div>
+                      </div>
+                      <div style="font-size:15px;font-weight:900;color:{C_BLUE};flex-shrink:0">
+                        €{price:.2f}
+                      </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,{C_LTBL},#DEEEFF);
+                        border:1.5px solid #B3D1F0;border-radius:12px;
+                        padding:14px 18px;margin-bottom:16px">
+              <div style="font-size:10px;color:{C_BLUE};font-weight:700;
+                          text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">
+                🌿 GreenBasket Offer Ready
+              </div>
+              <div style="font-size:13px;font-weight:700;color:#222">{mech['label']}</div>
+              <div style="font-size:11px;color:#aaa;margin-top:3px">
+                Applied automatically at checkout
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if st.button("Proceed to Checkout →", use_container_width=True, key="co_step0"):
+                st.session_state.co_step = 1
+                st.rerun()
+
+        # ── STEPS 1 & 2: Receipt ─────────────────────────────────────────────
+        elif step in (1, 2):
+            items_html = ""
+            for p, price in zip(products, prices):
+                items_html += f"""
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                            padding:10px 0;border-bottom:1px solid #F5F5F5">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="font-size:22px">{p['icon']}</span>
+                    <div>
+                      <div style="font-size:13px;color:#333;font-weight:500">{p['name']}</div>
+                      <div style="font-size:10px;color:#aaa">{p['brand']}</div>
+                    </div>
+                  </div>
+                  <span style="font-size:13px;font-weight:600;color:#444">€{price:.2f}</span>
+                </div>"""
+
+            if step == 1:
+                offer_section = f"""
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;
+                            background:#FFF8E1;border-radius:8px;margin:10px 0;
+                            border:1.5px dashed {C_AMBER}">
+                  <span style="font-size:18px">🌿</span>
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#E65100">
+                      GreenBasket Offer Pending
+                    </div>
+                    <div style="font-size:10px;color:#aaa">Tap below to apply your reward</div>
+                  </div>
+                </div>"""
+                total_col    = "#888"
+                total_amount = f"€{subtotal:.2f}"
+                btn_label    = "Apply GreenBasket Offer 🌿"
+                next_step    = 2
+            else:
+                if discount_amt > 0:
+                    saving_line = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">−€{discount_amt:.2f}</span>'
+                else:
+                    saving_line = f'<span style="font-size:14px;font-weight:900;color:{C_GREEN}">✓ Applied</span>'
+                offer_section = f"""
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                            padding:11px 14px;background:#E8F5E9;border-radius:8px;
+                            margin:10px 0;border-left:4px solid {C_GREEN}">
+                  <div>
+                    <div style="font-size:10px;color:{C_GREEN};font-weight:700;
+                                text-transform:uppercase;letter-spacing:1px">
+                      🌿 GreenBasket Offer Applied
+                    </div>
+                    <div style="font-size:12px;color:#2E7D32;margin-top:2px">{mech['label']}</div>
+                  </div>
+                  {saving_line}
+                </div>"""
+                total_col    = C_BLUE
+                total_amount = f"€{final_total:.2f}"
+                btn_label    = "Confirm Payment →"
+                next_step    = 3
+
+            st.markdown(f"""
+            <div style="background:#fff;border-radius:16px;overflow:hidden;
+                        box-shadow:0 4px 24px rgba(0,0,0,.1);margin-bottom:16px">
+              <div style="background:linear-gradient(135deg,{C_BLUE} 0%,#0066CC 100%);
+                          padding:18px 24px;display:flex;justify-content:space-between;
+                          align-items:center">
+                <div>
+                  <div style="font-size:10px;color:#A8C8F0;letter-spacing:2px;
+                              text-transform:uppercase;margin-bottom:3px">Carrefour Market</div>
+                  <div style="font-size:17px;font-weight:800;color:#fff">
+                    🛒 GreenBasket Checkout
+                  </div>
+                </div>
+                <div style="background:rgba(255,255,255,.18);border-radius:10px;
+                            padding:8px 16px;text-align:center">
+                  <div style="font-size:10px;color:#A8C8F0;margin-bottom:2px">Shopper</div>
+                  <div style="font-size:13px;font-weight:800;color:#fff">{first_name_co}</div>
+                </div>
+              </div>
+              <div style="padding:20px 24px">
+                {items_html}
+                <div style="display:flex;justify-content:space-between;
+                            padding:11px 0 6px;border-top:2px solid #eee;margin-top:4px">
+                  <span style="font-size:13px;color:#888">Subtotal</span>
+                  <span style="font-size:13px;font-weight:600;color:#555">€{subtotal:.2f}</span>
+                </div>
+                {offer_section}
+                <div style="display:flex;justify-content:space-between;
+                            padding:13px 0 4px;border-top:3px solid {total_col};margin-top:6px">
+                  <span style="font-size:16px;font-weight:900;color:{total_col}">TOTAL</span>
+                  <span style="font-size:16px;font-weight:900;color:{total_col}">{total_amount}</span>
+                </div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if st.button(btn_label, use_container_width=True, key=f"co_step{step}"):
+                st.session_state.co_step = next_step
+                st.rerun()
+
+        # ── STEP 3: Payment Confirmed ─────────────────────────────────────────
+        elif step >= 3:
+            st.balloons()
+
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%);
+                        border:2px solid {C_GREEN};border-radius:16px;
+                        padding:28px 24px 24px;text-align:center;
+                        box-shadow:0 4px 18px rgba(46,125,50,.2);margin-bottom:14px">
+              <div style="font-size:48px;margin-bottom:10px">✅</div>
+              <div style="font-size:11px;color:{C_GREEN};font-weight:700;
+                          text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">
+                Payment Confirmed
+              </div>
+              <div style="font-size:28px;font-weight:900;color:#1B5E20;margin-bottom:4px">
+                €{final_total:.2f} paid
+              </div>
+              <div style="font-size:13px;color:#388E3C;margin-bottom:20px">
+                {mech['label']}
+              </div>
+              <div style="background:rgba(255,255,255,.75);border-radius:12px;
+                          padding:16px 18px;display:flex;gap:0">
+                <div style="flex:1;text-align:center;padding:0 8px">
+                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
+                              letter-spacing:1px;margin-bottom:5px">Basket Points</div>
+                  <div style="font-size:26px;font-weight:900;color:{C_BLUE}">+{basket_pts}</div>
+                </div>
+                <div style="width:1px;background:#ddd;margin:0 4px"></div>
+                <div style="flex:1;text-align:center;padding:0 8px">
+                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
+                              letter-spacing:1px;margin-bottom:5px">Bonus Points</div>
+                  <div style="font-size:26px;font-weight:900;color:{C_GREEN}">+{bonus_pts_co}</div>
+                </div>
+                <div style="width:1px;background:#ddd;margin:0 4px"></div>
+                <div style="flex:1;text-align:center;padding:0 8px">
+                  <div style="font-size:10px;color:#aaa;text-transform:uppercase;
+                              letter-spacing:1px;margin-bottom:5px">New Balance</div>
+                  <div style="font-size:26px;font-weight:900;color:{C_AMBER}">{new_balance:,}</div>
+                </div>
+              </div>
+            </div>
+            <div style="background:#fff;border-radius:14px;padding:20px 22px;
+                        box-shadow:0 2px 12px rgba(0,0,0,.07);text-align:center;
+                        border-top:4px solid {C_AMBER};margin-bottom:16px">
+              <div style="font-size:38px;margin-bottom:8px">{badge_icon_co}</div>
+              <div style="font-size:10px;color:{C_AMBER};font-weight:700;
+                          text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px">
+                Badge Progress
+              </div>
+              <div style="font-size:16px;font-weight:800;color:#333">{badge_name_co}</div>
+              <div style="font-size:12px;color:#aaa;margin-top:4px">
+                Keep shopping to unlock your next reward
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ── Reset ─────────────────────────────────────────────────────────────
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        if st.button("↺  Start Over", use_container_width=True, key="co_reset"):
+            st.session_state.co_step = 0
+            st.rerun()
